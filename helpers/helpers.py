@@ -112,3 +112,21 @@ def getCurrentKFoldSplit(data : np.ndarray, labels : np.ndarray, iter : np.ndarr
         trainlabels =np.concatenate((labels[ : lowerbound], labels[upperbound :]))
     
     return (traindata, trainlabels), (testdata, testlabels) 
+
+def compute_accuracy(predictedLabels : np.ndarray, correctLabels : np.ndarray) -> float:
+    """    
+    Compute the accuracy of a given classifier,
+    based on the predicted and the correct labels.
+
+    Args:
+        predictedLabels (np.ndarray): the predictions of the classifier
+        correctLabels (np.ndarray): the correct labels
+
+    Returns:
+        float: accuracy
+    """
+    correctPredictions = np.sum(predictedLabels == correctLabels)
+    
+    accuracy = correctPredictions / correctLabels.size
+    
+    return accuracy
