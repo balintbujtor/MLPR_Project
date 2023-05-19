@@ -1,8 +1,10 @@
 import numpy as np
 import loader.loader as loader
 import helpers.helpers as helpers
+import preprocessing.preprocessing as preproc
 import generativeModels.generativeModels as generativeModels
 import logisticRegression.logisticRegression as logReg
+
 if __name__ == "__main__":
 
     DTR, LTR = loader.loadData('data/Train.txt')
