@@ -64,14 +64,15 @@ def computeLDA(dataset: np.ndarray, labels : np.ndarray, m : int) -> np.ndarray:
 
         S_w += c_w_class*class_samples.shape[1]
 
-    Sb /= nSamples
-    Sw /= nSamples
+    S_b /= nSamples
+    S_w /= nSamples
     
-    _, U = scipy.linalg.eigh(Sb, Sw)
+    _, U = scipy.linalg.eigh(S_b, S_w)
     W = U[:, ::-1][:, 0:m]
 
     # orthogonalize W
     # Uw, _, _ = np.linalg.svd(W)
     # U = Uw[:, 0:m]
 
-    return W
+    reducedData = np.dot(W.T, dataset)
+    return reducedData
