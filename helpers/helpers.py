@@ -9,6 +9,10 @@ def vrow(array):
 
     return array.reshape((1, array.shape[0]))
 
+# TODO: check if works
+def mcol(v):
+    return v.reshape((v.size,1))
+
 def logpdf_GAU_ND(x : np.ndarray, mu :np.ndarray, C :np.ndarray) -> np.ndarray:
     """computes the log density of the dataset x given mu and C
     
@@ -78,6 +82,18 @@ def splitToKFold(nsamples : int, nfolds=10, LOO=False) -> tuple[int, np.ndarray]
     nsplits = foldBounds.size
     return  nsplits, foldBounds
 
+# TODO: rework
+def KsplitNew(D, L, seed=0, K=3):
+    folds = []
+    labels = []
+    numberOfSamplesInFold = int(D.shape[1]/K)
+    # Generate a random seed
+    np.random.seed(seed)
+    idx = np.random.permutation(D.shape[1])
+    for i in range(K):
+        folds.append(D[:,idx[(i*numberOfSamplesInFold): ((i+1)*(numberOfSamplesInFold))]])
+        labels.append(L[idx[(i*numberOfSamplesInFold): ((i+1)*(numberOfSamplesInFold))]])
+    return folds, labels
 
 def getCurrentKFoldSplit(data : np.ndarray, labels : np.ndarray, iter : np.ndarray, foldBounds : np.ndarray):
     """
@@ -130,3 +146,11 @@ def compute_accuracy(predictedLabels : np.ndarray, correctLabels : np.ndarray) -
     accuracy = correctPredictions / correctLabels.size
     
     return accuracy
+
+# TODO: check if works
+def ZNormalization(D, mean=None, standardDeviation=None):
+    if (mean is None and standardDeviation is None):
+        mean = D.mean(axis=1)
+        standardDeviation = D.std(axis=1)
+    ZD = (D-mcol(mean))/mcol(standardDeviation)
+    return ZD, mean, standardDeviation
