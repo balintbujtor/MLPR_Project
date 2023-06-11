@@ -54,3 +54,21 @@ def computeMinDCF(scores : np.ndarray, labels: np.ndarray, prior: float, cfn: fl
         normDCFs.append(normDCF)
         
     return min(normDCFs)
+
+def compute_accuracy(predictedLabels : np.ndarray, correctLabels : np.ndarray) -> float:
+    """    
+    Compute the accuracy of a given classifier,
+    based on the predicted and the correct labels.
+
+    Args:
+        predictedLabels (np.ndarray): the predictions of the classifier
+        correctLabels (np.ndarray): the correct labels
+
+    Returns:
+        float: accuracy
+    """
+    correctPredictions = np.sum(predictedLabels == correctLabels)
+    
+    accuracy = correctPredictions / correctLabels.size
+    
+    return accuracy

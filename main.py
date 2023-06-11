@@ -7,6 +7,8 @@ import logisticRegression.logisticRegression as logReg
 import matplotlib.pyplot as plot
 import visualization.visualization as vis
 import evaluation.evaluation as eval
+
+
 visualize = False
 
 if __name__ == "__main__":
@@ -16,13 +18,14 @@ if __name__ == "__main__":
 
     # initial preprocessing
     
-    PCAdirs = preproc.computePCA(DTR, 2)
+    PCAdirs, _ = preproc.computePCA(DTR, 2)
     pcaClass0 = PCAdirs[:, LTR == 0]
     pcaClass1 = PCAdirs[:, LTR == 1]
     pcaClass0attr0 = pcaClass0[0, :]
     pcaClass1attr0 = pcaClass1[0, :]
     pcaClass0attr1 = pcaClass0[1, :]
     pcaClass1attr1 = pcaClass1[1, :]
+    cumRatios = preproc.computeCumVarRatios(DTR)
     
     LDAdir = preproc.computeLDA(DTR, LTR, 1)
     ldaClass0 = LDAdir[:, LTR == 0]
@@ -38,6 +41,7 @@ if __name__ == "__main__":
         vis.plotCorrMat(DTR[:, LTR == 0])
         vis.plotCorrMat(DTR[:, LTR == 1])
         vis.plotCorrMat(DTR)
+        vis.plotCumVarRatios(cumRatios, DTR.shape[0] + 1)
 
 
     # setting up working point and eff prior
@@ -49,30 +53,15 @@ if __name__ == "__main__":
     
     
     #kfold
-    # TODO: check k fold split, how it should behave correctly
     postlogscores = []
     correctEvalLabels = []
     nFolds = 5
-    nsplits, splitbounds = helpers.splitToKFold(DTR.shape[1], nFolds)
-    kdata, klabels = helpers.KsplitNew(DTR, LTR, 0, 5)
+
+    kdata, klabels = helpers.splitToKFold(DTR, LTR)
 
     for i in range(0, nFolds):
         
-        trainingData = []
-        trainingLabels = []
-        evalData = []
-        evalLabels = []
-        
-        for j in range(nFolds):
-            if j != i:
-                trainingData.append(kdata[j])
-                trainingLabels.append(klabels[j])
-            else:
-                evalData = kdata[i]
-                evalLabels = klabels[i]
-        
-        trainingData = np.hstack(trainingData)
-        trainingLabels = np.hstack(trainingLabels)
+        trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)
         
         # MVG with K-fold
         _, sPostLogMVG = generativeModels.logMVG(trainingData, trainingLabels, evalData, 2, priorProb)
@@ -80,9 +69,12 @@ if __name__ == "__main__":
         correctEvalLabels.append(evalLabels)
 
     postlogscores = np.hstack(postlogscores)
-    llr = np.log(postlogscores[0] / postlogscores[1])
+    llr = np.log(postlogscores[1] / postlogscores[0])
     
+    predLabels = np.argmax(postlogscores, 0)
     correctEvalLabels = np.hstack(correctEvalLabels)
-    minDCFMVg = eval.computeMinDCF(correctEvalLabels, correctEvalLabels, prior, Cfn, Cfp)
+    
+    acc = eval.compute_accuracy(predLabels, correctEvalLabels)
+    minDCFMVg = eval.computeMinDCF(llr, correctEvalLabels, prior, Cfn, Cfp)
 
     print("finished")

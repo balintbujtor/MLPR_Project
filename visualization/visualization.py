@@ -27,6 +27,17 @@ def plotCorrMat(data):
     plt.matshow(corrMat)
     plt.show()
 
+
+def plotCumVarRatios(ratios, dims):
+    # Plot the fraction of explained variance 
+    plt.plot(range(0, dims), ratios) 
+    plt.xlabel('Number of Principal Components') 
+    plt.ylabel('Cumulative Variance Ratio') 
+    plt.title('Fraction of Explained Variance with PCAs') 
+    plt.grid(True) 
+    plt.show()
+
+
 def plotROCCurve(scores : np.ndarray, labels: np.ndarray):
 
     FPRs = []

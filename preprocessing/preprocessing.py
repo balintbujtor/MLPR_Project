@@ -28,11 +28,40 @@ def computePCA(trainData : np.ndarray, m : int) -> np.ndarray:
     s, U = np.linalg.eigh(c)
 
     P = U[:, ::-1][:, 0:m]
-
+    
     data_points = np.dot(P.T, trainData)
+    
+    print("explained_variance_ratio: ") 
+    print(s[::-1][:m] / np.sum(s)) 
+    print(s[::-1][:m]) 
 
-    return data_points
+    # Compute explained variance ratio 
+    explained_variance_ratio = s[::-1][:m] / np.sum(s) 
 
+    # Compute cumulative sum of explained variance ratios 
+    cumulative_variance_ratio = np.cumsum(explained_variance_ratio) 
+
+    return data_points, cumulative_variance_ratio
+
+
+def computeCumVarRatios(DTR):
+    # Initialize an empty array to store cumulative variance ratios 
+    cumulative_variance_ratios = [] 
+
+    # Loop through different numbers of principal components 
+    for m in range(0, DTR.shape[0] + 1): 
+        # Compute PCA and get the cumulative variance ratio 
+        _, cumulative_variance_ratio = computePCA(DTR, m) 
+    
+        print(f"Number of Principal Components: {m}, Cumulative Variance Ratio: {cumulative_variance_ratio} ,") 
+    
+        # Append the cumulative variance ratio to the array 
+        if m == 0: 
+            cumulative_variance_ratios.append(0) 
+        else: 
+            cumulative_variance_ratios.append(cumulative_variance_ratio[-1])  
+            
+    return cumulative_variance_ratios
 
 def computeLDA(dataset: np.ndarray, labels : np.ndarray, m : int) -> np.ndarray:
     """
