@@ -9,10 +9,6 @@ def vrow(array):
 
     return array.reshape((1, array.shape[0]))
 
-# TODO: check if works
-def mcol(v):
-    return v.reshape((v.size,1))
-
 def logpdf_GAU_ND(x : np.ndarray, mu :np.ndarray, C :np.ndarray) -> np.ndarray:
     """computes the log density of the dataset x given mu and C
     
@@ -91,5 +87,5 @@ def ZNormalization(D, mean=None, standardDeviation=None):
     if (mean is None and standardDeviation is None):
         mean = D.mean(axis=1)
         standardDeviation = D.std(axis=1)
-    ZD = (D-mcol(mean))/mcol(standardDeviation)
+    ZD = (D-vcol(mean))/vcol(standardDeviation)
     return ZD, mean, standardDeviation

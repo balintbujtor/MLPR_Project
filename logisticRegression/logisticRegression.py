@@ -19,7 +19,9 @@ class logRegClassifier:
         self.K = len(set(self.LTR)) # number of classes
         self.D = DTR.shape[0] # dimensionality / number of features
         self.nSamples = DTR.shape[1]
-        
+    
+    
+    # TODO: add the computation and return of the gradient to make it faster
     def logregBinary(self, v : np.ndarray) -> float:
         """
         Implements the binary logistic regression function.
