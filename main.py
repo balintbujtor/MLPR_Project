@@ -19,6 +19,8 @@ if __name__ == "__main__":
     # initial preprocessing
     
     PCAdirs, _ = preproc.computePCA(DTR, 2)
+    pcaData9Dirs, _ = preproc.computePCA(DTR, 9)
+    
     pcaClass0 = PCAdirs[:, LTR == 0]
     pcaClass1 = PCAdirs[:, LTR == 1]
     pcaClass0attr0 = pcaClass0[0, :]
@@ -67,6 +69,17 @@ if __name__ == "__main__":
         _, sPostLogMVG = generativeModels.logMVG(trainingData, trainingLabels, evalData, 2, priorProb)
         postlogscores.append(sPostLogMVG)
         correctEvalLabels.append(evalLabels)
+        
+        # tied
+
+        # naive
+        
+        #naivetied
+        
+
+        #logreg
+        
+        #logreg znorm
 
     postlogscores = np.hstack(postlogscores)
     llr = np.log(postlogscores[1] / postlogscores[0])
@@ -77,4 +90,5 @@ if __name__ == "__main__":
     acc = eval.compute_accuracy(predLabels, correctEvalLabels)
     minDCFMVg = eval.computeMinDCF(llr, correctEvalLabels, prior, Cfn, Cfp)
 
+    # np.save("mind dcf score")
     print("finished")
