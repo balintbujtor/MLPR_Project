@@ -72,7 +72,7 @@ def computeLDA(dataset: np.ndarray, labels : np.ndarray, m : int) -> np.ndarray:
         m (int): first m principal directions to keep
 
     Returns:
-        np.ndarray: TODO
+        np.ndarray: 
     """
     dataset_mean = dataset.mean(1)
     numclasses = max(labels) - min(labels) + 1
