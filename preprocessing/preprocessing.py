@@ -31,9 +31,9 @@ def computePCA(trainData : np.ndarray, m : int) -> np.ndarray:
     
     data_points = np.dot(P.T, trainData)
     
-    print("explained_variance_ratio: ") 
-    print(s[::-1][:m] / np.sum(s)) 
-    print(s[::-1][:m]) 
+    #print("explained_variance_ratio: ") 
+    #print(s[::-1][:m] / np.sum(s)) 
+    #print(s[::-1][:m]) 
 
     # Compute explained variance ratio 
     explained_variance_ratio = s[::-1][:m] / np.sum(s) 
@@ -53,7 +53,7 @@ def computeCumVarRatios(DTR):
         # Compute PCA and get the cumulative variance ratio 
         _, cumulative_variance_ratio = computePCA(DTR, m) 
     
-        print(f"Number of Principal Components: {m}, Cumulative Variance Ratio: {cumulative_variance_ratio} ,") 
+        #print(f"Number of Principal Components: {m}, Cumulative Variance Ratio: {cumulative_variance_ratio} ,") 
     
         # Append the cumulative variance ratio to the array 
         if m == 0: 
