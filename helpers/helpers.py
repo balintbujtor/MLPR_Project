@@ -82,7 +82,6 @@ def getCurrentKFoldSplit(splitdata : np.ndarray, splitlabels : np.ndarray, curFo
     return trainingData, trainingLabels, evalData, evalLabels
 
 
-# TODO: check if works
 def ZNormalization(D, mean=None, standardDeviation=None):
     if (mean is None and standardDeviation is None):
         mean = D.mean(axis=1)

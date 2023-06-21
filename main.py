@@ -4,7 +4,6 @@ import helpers.helpers as helpers
 import preprocessing.preprocessing as preproc
 import generativeModels.generativeModels as generativeModels
 import logisticRegression.logisticRegression as logReg
-import matplotlib.pyplot as plot
 import visualization.visualization as vis
 import evaluation.evaluation as eval
 
@@ -14,7 +13,7 @@ visualize = False
 if __name__ == "__main__":
 
     DTR, LTR = loader.loadData('data/Train.txt')
-    DTE, LTE = loader.loadData('data/Test.txt')
+    # DTE, LTE = loader.loadData('data/Test.txt')
 
     # initial preprocessing
     
@@ -56,37 +55,93 @@ if __name__ == "__main__":
     #kfold
 
     nFolds = 5
+    runLogReg = True
+    znorm = False
+    if runLogReg:
+        
+        minDCFarrayLogReg = []
+        minDCFarrayZLogReg = []
+        
+        for j in range(10, 6, -1):
+            
+            # no pca
+            if(j == 10):
+                if znorm:
+                    DTR, _, _ = helpers.ZNormalization(DTR)
+                kdata, klabels = helpers.splitToKFold(DTR, LTR, K=nFolds)
+            else:
+                if znorm:
+                    DTR, _, _ = helpers.ZNormalization(DTR)
+
+                reducedData, _ = preproc.computePCA(DTR, j)
+                kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
+                
+            correctEvalLabels = []
+            llrsLogReg = []
+            
+            for i in range(0, nFolds):
+                
+                trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)                
+                
+                for l_iter in range(0, 6):
+                    
+                    curLambda = 10**l_iter*1e-5
+                    if(i == 0):
+                        llrsLogReg.append([curLambda, []])
+                    
+                    # TODO: check with Kasia if prior stuff is ok
+                    logRegObj = logReg.logRegClassifier(DTR=trainingData, LTR=trainingLabels, l=curLambda, pi=effPrior)
+                    wtrain, btrain = logRegObj.trainBin()  
+                    logScores, preds = logRegObj.evaluateBin(DTE=evalData, w=wtrain, b=btrain, thr=np.log(effPrior))
+                    
+                    llrsLogReg[l_iter][1].append(logScores)
+                
+                correctEvalLabels.append(evalLabels)
+
+                
+            correctEvalLabels = np.hstack(correctEvalLabels)
+            for i in range(len(llrsLogReg)):
+                llrsLogReg[i][1] = np.hstack(llrsLogReg[i][1])
+                
+                minDCFLogReg = eval.computeMinDCF(llrsLogReg[i][1], correctEvalLabels, prior, Cfn, Cfp)
+                minDCFarrayLogReg.append([znorm, j, llrsLogReg[i][0], minDCFLogReg])
+        
+        print('trained')
+
+    
+    
     
     runGenerative = False
-    minDCFMVGarray = []
-    minDCFTiedMVGarray = []
-    minDCFNaiveMVGarray = []
-
-    # to try out different pca directions
-    for j in range(10, 5, -1):
+    if runGenerative:
         
-        if(j == 10):
-            # without PCA
-            kdata, klabels = helpers.splitToKFold(DTR, LTR, K=nFolds)
-        
-        else:
-            reducedData, _ = preproc.computePCA(DTR, j)
-            kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
+        minDCFMVGarray = []
+        minDCFTiedMVGarray = []
+        minDCFNaiveMVGarray = []
 
-        sLogPostMVG = []
-        sLogPostTiedMVG = []
-        sLogPostNaiveMVG = []
-        
-        correctEvalLabels = []
+        # to try out different pca directions
+        for j in range(10, 5, -1):
+            
+            if(j == 10):
+                # without PCA
+                kdata, klabels = helpers.splitToKFold(DTR, LTR, K=nFolds)
+            
+            else:
+                reducedData, _ = preproc.computePCA(DTR, j)
+                kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
 
-        for i in range(0, nFolds):
+            sLogPostMVG = []
+            sLogPostTiedMVG = []
+            sLogPostNaiveMVG = []
             
-            trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)
-            
-            # same for all, do it only once
-            correctEvalLabels.append(evalLabels)
-            
-            if runGenerative:
+            correctEvalLabels = []
+
+            for i in range(0, nFolds):
+                
+                trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)
+                
+                # same for all, do it only once
+                correctEvalLabels.append(evalLabels)
+                
                 # MVG with K-fold
                 _, sPostLogMVG = generativeModels.logMVG(trainingData, trainingLabels, evalData, 2, priorProb)
                 sLogPostMVG.append(sPostLogMVG)
@@ -98,17 +153,11 @@ if __name__ == "__main__":
                 # naive
                 _, sPostLogNaiveMVG = generativeModels.logNaiveBayes(trainingData, trainingLabels, evalData, 2, priorProb)
                 sLogPostNaiveMVG.append(sPostLogNaiveMVG)
-                
-                #naivetied - we are not going to do it because the tied model performs worse than the untied
+                    
+                    #naivetied - we are not going to do it because the tied model performs worse than the untied
             
+            correctEvalLabels = np.hstack(correctEvalLabels)
 
-            #logreg
-            
-            #logreg znorm
-        
-        correctEvalLabels = np.hstack(correctEvalLabels)
-
-        if runGenerative:
             # eval of MVG
             sLogPostMVG = np.hstack(sLogPostMVG)
             llrMVG = np.log(sLogPostMVG[1] / sLogPostMVG[0])

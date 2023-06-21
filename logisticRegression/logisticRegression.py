@@ -5,7 +5,7 @@ class logRegClassifier:
     """
     This class implements a BINARY Logistic Regression Classifier
     """
-    def __init__(self, DTR : np.ndarray, LTR: np.ndarray, l: float) -> None:
+    def __init__(self, DTR : np.ndarray, LTR: np.ndarray, l: float, pi: float = None) -> None:
         """Init function to initialize the object with the required parameters
 
         Args:
@@ -16,12 +16,12 @@ class logRegClassifier:
         self.DTR = DTR
         self.LTR = LTR
         self.l = l
+        self.pi = pi
         self.K = len(set(self.LTR)) # number of classes
         self.D = DTR.shape[0] # dimensionality / number of features
         self.nSamples = DTR.shape[1]
     
     
-    # TODO: add the computation and return of the gradient to make it faster
     def logregBinary(self, v : np.ndarray) -> float:
         """
         Implements the binary logistic regression function.
@@ -35,16 +35,36 @@ class logRegClassifier:
         b = v[-1]
         
         regularizer = self.l / 2 * (np.linalg.norm(w)**2)
-        H = 0
         
-        for i in range(self.nSamples):
-            z = 2*self.LTR[i] - 1
-            curval = np.logaddexp(0, -z*(np.dot(w.T, self.DTR[:, i]) + b))
-            H += curval
+        if self.pi == None:
+            H = 0
+            
+            for i in range(self.nSamples):
+                z = 2*self.LTR[i] - 1
+                curval = np.logaddexp(0, -z*(np.dot(w.T, self.DTR[:, i]) + b))
+                H += curval
+            
+            J = regularizer + H / self.nSamples
+            
+            return J
         
-        J = regularizer + H / self.nSamples
-        
-        return J
+        else:
+            risk1 = 0
+            risk0 = 0
+            Nt = np.sum(self.LTR == 1)
+            Nf = np.sum(self.LTR == 0)
+            classT = self.DTR[:, self.LTR == 1]
+            classF = self.DTR[:, self.LTR == 0]
+            
+            for i in range(classT.shape[1]):
+                risk1 += np.logaddexp(0, -1 * (np.dot(w.T, classT[:, i]) + b))
+            for i in range(classF.shape[1]):
+                risk0 += np.logaddexp(0, 1 * (np.dot(w.T, classF[:, i]) + b))
+            
+            H = self.pi/Nt*risk1 + (1 - self.pi)/Nf*risk0
+            J = regularizer + H
+            
+            return J
     
     def trainBin(self):
         """
@@ -79,4 +99,4 @@ class logRegClassifier:
         score = np.dot(w.T, DTE) + b
         predictions = score > thr
         
-        return predictions
+        return score, predictions

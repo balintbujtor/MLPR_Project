@@ -2,7 +2,7 @@ import numpy as np
 import scipy
 from helpers import helpers
 
-
+# TODO: check if prior is correct like this
 def logMVG(traindata: np.ndarray, trainlabel: np.ndarray, testdata: np.ndarray, nclasses: int, prior : np.ndarray) -> tuple[np.ndarray, np.ndarray]:   
     """
     Multivariate Gaussian Classifier that computes the posterior probability
