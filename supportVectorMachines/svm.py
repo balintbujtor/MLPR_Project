@@ -38,7 +38,7 @@ class LinearSVMClassifier:
         return primalLoss
     
     
-    def computeSVMSolutions(self, C: float, k: float = 1):
+    def train(self, C: float, k: float = 1):
         Carray = np.ones((self.numSamples, ))*C
         zeros = np.zeros(self.numSamples,)
         boxConstraints = np.asarray(list(zip(zeros, Carray)))
@@ -61,16 +61,16 @@ class LinearSVMClassifier:
         return alphaStar, wStar, primalLoss, dualLoss
     
     
-    def predictLabels(self, testData, wStar, K, threshold):
+    def predict(self, testData, wStar, threshold: float = 0, k: float = 1):
         
         w = wStar[:-1]
         b = wStar[-1]
         predictions = np.zeros(testData.shape[1])
         
-        score = np.dot(w.T, testData)+b*K
+        score = np.dot(w.T, testData)+b*k
         predictions = score > threshold
     
-        return predictions
+        return score, predictions
         
 
 
@@ -118,7 +118,7 @@ class KernelSVMClassifier:
         return LHat, LHatGradient
     
     
-    def computeSVMSolution(self, C: float, kernelFunc):
+    def train(self, C: float, kernelFunc):
         
         Carray = np.ones((self.numSamples, ))*C
         zeros = np.zeros(self.numSamples,)
@@ -135,7 +135,7 @@ class KernelSVMClassifier:
         return alphaStar, dualLoss
     
     
-    def predictLabels(self, testData, alphaStar, threshold, kernelFunc):
+    def predict(self, testData, alphaStar, threshold, kernelFunc):
         
         Z = helpers.vcol(2 * self.trainLabels - 1)
                 

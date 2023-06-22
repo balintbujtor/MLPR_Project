@@ -2,31 +2,36 @@ import numpy as np
 import matplotlib.pyplot as plt
 from evaluation.evaluation import computeConfusionMatrix, computeDCF, computeMinDCF, computeNormalisedDCF
 
-def plotHistogram(data1, data2):
+def plotHistogram(data1, data2, title):
     
     plt.hist(data1, bins=25, density=True, fc=(0, 0, 1, 0.5))
     plt.hist(data2, bins=25, density=True, fc=(1, 0, 0, 0.5))
-    plt.legend(["class false", "class true"])
-    plt.show()
+    plt.legend(["class 0", "class 1"])
+    plt.savefig(f'figures/{title}.png')
+    # plt.show()
+    plt.clf()
     
     return
 
-def plotScatter(class0, class1):
+def plotScatter(class0, class1, title):
     plt.scatter(class0[0, :], class0[1, :], fc=(0, 0, 1, 0.5))
     plt.scatter(class1[0, :], class1[1, :], fc=(1, 0, 0, 0.5))
-    plt.legend(["class false", "class true"])
+    plt.legend(["class 0", "class 1"])
     plt.xlabel("attribute 0")
     plt.ylabel("attribute 1")
-    plt.show()
+    plt.savefig(f'figures/{title}.png')
+    # plt.show()
+    plt.clf()
     
     return
 
-def plotCorrMat(data):
-        # TODO: make it correct and contain info
+def plotCorrMat(data, filename):
     corrMat = np.corrcoef(data)
     plt.matshow(corrMat)
-    plt.show()
-
+    plt.colorbar()
+    plt.savefig(f'figures/{filename}.png')
+    # plt.show()
+    plt.clf()
 
 def plotCumVarRatios(ratios, dims):
     # Plot the fraction of explained variance 
@@ -35,7 +40,9 @@ def plotCumVarRatios(ratios, dims):
     plt.ylabel('Cumulative Variance Ratio') 
     plt.title('Fraction of Explained Variance with PCAs') 
     plt.grid(True) 
-    plt.show()
+    plt.savefig(f'figures/CumulativeVarianceRatios.png')
+    # plt.show()
+    plt.clf()
 
 
 def plotROCCurve(scores : np.ndarray, labels: np.ndarray):

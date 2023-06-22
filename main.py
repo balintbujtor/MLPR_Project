@@ -4,44 +4,51 @@ import helpers.helpers as helpers
 import preprocessing.preprocessing as preproc
 import generativeModels.generativeModels as generativeModels
 import logisticRegression.logisticRegression as logReg
+import supportVectorMachines.svm as svm
 import visualization.visualization as vis
 import evaluation.evaluation as eval
 
 
-visualize = False
 
 if __name__ == "__main__":
 
     DTR, LTR = loader.loadData('data/Train.txt')
     # DTE, LTE = loader.loadData('data/Test.txt')
 
-    # initial preprocessing
-    
-    PCAdirs, _ = preproc.computePCA(DTR, 2)
-    
-    pcaClass0 = PCAdirs[:, LTR == 0]
-    pcaClass1 = PCAdirs[:, LTR == 1]
-    pcaClass0attr0 = pcaClass0[0, :]
-    pcaClass1attr0 = pcaClass1[0, :]
-    pcaClass0attr1 = pcaClass0[1, :]
-    pcaClass1attr1 = pcaClass1[1, :]
-    cumRatios = preproc.computeCumVarRatios(DTR)
-    
-    LDAdir = preproc.computeLDA(DTR, LTR, 1)
-    ldaClass0 = LDAdir[:, LTR == 0]
-    ladClass1 = LDAdir[:, LTR == 1]
-    ldaClass0attr0 = ldaClass0[0, :]
-    ldaClass1attr0 = ladClass1[0, :] 
-    
-    if visualize:
-        vis.plotHistogram(pcaClass0attr0, pcaClass1attr0)
-        vis.plotHistogram(pcaClass0attr1, pcaClass1attr1)
-        vis.plotScatter(pcaClass0, pcaClass1)
-        vis.plotHistogram(ldaClass0attr0, ldaClass1attr0)
-        vis.plotCorrMat(DTR[:, LTR == 0])
-        vis.plotCorrMat(DTR[:, LTR == 1])
-        vis.plotCorrMat(DTR)
+    runInitAnalysis = False
+    if runInitAnalysis:
+        # initial preprocessing
+        class0 = DTR[:, LTR == 0]
+        class1 = DTR[:, LTR == 1]
+        for i in range(DTR.shape[0]):
+            class0attri = class0[i, :]
+            class1attri = class1[i, :]
+            vis.plotHistogram(class0attri, class1attri, f"HistogramDatasetFeature_{i}")
+            
+        PCAdirs, _ = preproc.computePCA(DTR, 2)
+        
+        pcaClass0 = PCAdirs[:, LTR == 0]
+        pcaClass1 = PCAdirs[:, LTR == 1]
+        for i in range(2):
+            pcaClass0attri = pcaClass0[i, :]
+            pcaClass1attri = pcaClass1[i, :]
+            vis.plotHistogram(pcaClass0attri, pcaClass1attri, f"HistogramPCAdir{i}")
+            
+        vis.plotScatter(pcaClass0, pcaClass1, "scatterPCAdirs")
+
+        LDAdir = preproc.computeLDA(DTR, LTR, 1)
+        ldaClass0 = LDAdir[:, LTR == 0]
+        ladClass1 = LDAdir[:, LTR == 1]
+        ldaClass0attr0 = ldaClass0[0, :]
+        ldaClass1attr0 = ladClass1[0, :] 
+        vis.plotHistogram(ldaClass0attr0, ldaClass1attr0, "LDA_direction")
+
+        cumRatios = preproc.computeCumVarRatios(DTR)
         vis.plotCumVarRatios(cumRatios, DTR.shape[0] + 1)
+        
+        vis.plotCorrMat(DTR[:, LTR == 0], "PearsonCorrelationClass0")
+        vis.plotCorrMat(DTR[:, LTR == 1], "PearsonCorrelationClass1")
+        vis.plotCorrMat(DTR, "PearsonCorrelation")
 
 
     # setting up working point and eff prior
@@ -55,7 +62,66 @@ if __name__ == "__main__":
     #kfold
 
     nFolds = 5
-    runLogReg = True
+    
+    #SVM
+    
+    #linear
+        #PCA 9, 7 - no pca
+        #znorm -no znorm
+    runSVM = False
+    if runSVM:
+        
+        pcaTrials = [10, 9, 7]
+        znorm = False
+        minDCFarrayLinSVM = []
+        
+        for pcadim in pcaTrials:
+
+            if(pcadim == 10):
+                if znorm:
+                    DTR, _, _ = helpers.ZNormalization(DTR)
+                kdata, klabels = helpers.splitToKFold(DTR, LTR, K=nFolds)
+            else:
+                if znorm:
+                    DTR, _, _ = helpers.ZNormalization(DTR)
+
+                reducedData, _ = preproc.computePCA(DTR, pcadim)
+                kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
+            
+            
+            correctEvalLabels = []
+            llrsLinearSVM = []
+            
+            for i in range(0, nFolds):
+            
+                trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)                
+                
+                for c_iter in range(0, 6):
+                    
+                    curC = 10**c_iter*1e-4
+                    if(i == 0):
+                        llrsLinearSVM.append([curC, []])
+                    
+                    linSVMObj = svm.LinearSVMClassifier(trainData=trainingData, trainLabels=trainingLabels)
+                    alphaStar, wStar, primalLoss, dualLoss = linSVMObj.train(curC)
+                    logScores, preds = linSVMObj.predict(evalData, wStar, np.log(effPrior))
+                    
+                    llrsLinearSVM[c_iter][1].append(logScores)
+                
+                correctEvalLabels.append(evalLabels)
+                
+            correctEvalLabels = np.hstack(correctEvalLabels)
+            for i in range(len(llrsLinearSVM)):
+                llrsLinearSVM[i][1] = np.hstack(llrsLinearSVM[i][1])
+                
+                minDCFLinSVM = eval.computeMinDCF(llrsLinearSVM[i][1], correctEvalLabels, prior, Cfn, Cfp)
+                minDCFarrayLinSVM.append([znorm, pcadim, llrsLinearSVM[i][0], minDCFLinSVM])
+        
+        print('trained')
+    
+    
+    # logistic regression
+    runLogReg = False
     znorm = False
     if runLogReg:
         
@@ -111,9 +177,10 @@ if __name__ == "__main__":
     
     
     
-    runGenerative = False
+    runGenerative = True
     if runGenerative:
         
+        znorm = False
         minDCFMVGarray = []
         minDCFTiedMVGarray = []
         minDCFNaiveMVGarray = []
@@ -123,9 +190,13 @@ if __name__ == "__main__":
             
             if(j == 10):
                 # without PCA
+                if znorm:
+                    DTR = helpers.ZNormalization(DTR)
                 kdata, klabels = helpers.splitToKFold(DTR, LTR, K=nFolds)
             
             else:
+                if znorm:
+                    DTR = helpers.ZNormalization(DTR)
                 reducedData, _ = preproc.computePCA(DTR, j)
                 kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
 
@@ -175,8 +246,18 @@ if __name__ == "__main__":
             llrNaiveMVG = np.log(sLogPostNaiveMVG[1] / sLogPostNaiveMVG[0])
             minDCFNaiveMVG = eval.computeMinDCF(llrNaiveMVG, correctEvalLabels, prior, Cfn, Cfp)
             minDCFNaiveMVGarray.append([j, minDCFNaiveMVG])
-        
-        
+
+        save = True
+        if save:
+            np.save(f"results/minDCFMVGarray_Znorm{znorm}_prior{effPrior}", minDCFMVGarray)
+            np.savetxt(f"results/minDCFMVGarray_Znorm{znorm}_prior{effPrior}", minDCFMVGarray)
+
+            np.save(f"results/minDCFTiedMVGarray_Znorm{znorm}_prior{effPrior}", minDCFTiedMVGarray)
+            np.savetxt(f"results/minDCFTiedMVGarray_Znorm{znorm}_prior{effPrior}", minDCFTiedMVGarray)
+            
+            np.save(f"results/minDCFNaiveMVGarray_Znorm{znorm}_prior{effPrior}", minDCFNaiveMVGarray)
+            np.savetxt(f"results/minDCFNaiveMVGarray_Znorm{znorm}_prior{effPrior}", minDCFNaiveMVGarray)
+            
 
 
-    print("finished")
+        print("finished")
