@@ -14,8 +14,11 @@ if __name__ == "__main__":
 
     DTR, LTR = loader.loadData('data/Train.txt')
     # DTE, LTE = loader.loadData('data/Test.txt')
-
+    
+    saveResults = True
+    
     runInitAnalysis = False
+    
     if runInitAnalysis:
         # initial preprocessing
         class0 = DTR[:, LTR == 0]
@@ -54,7 +57,7 @@ if __name__ == "__main__":
     # setting up working point and eff prior
     prior = 0.5
     Cfn = 1
-    Cfp = 10
+    Cfp = 1
     effPrior = (prior*Cfn)/(prior*Cfn + (1 - prior)*Cfp)
     priorProb = np.asarray([[effPrior], [1 - effPrior]])
     
@@ -117,6 +120,11 @@ if __name__ == "__main__":
                 minDCFLinSVM = eval.computeMinDCF(llrsLinearSVM[i][1], correctEvalLabels, prior, Cfn, Cfp)
                 minDCFarrayLinSVM.append([znorm, pcadim, llrsLinearSVM[i][0], minDCFLinSVM])
         
+        if saveResults:
+            
+            np.save(f"results/minDCFMVGarray_Znorm{znorm}_prior{effPrior}", minDCFarrayLinSVM)
+            np.savetxt(f"results/minDCFMVGarray_Znorm{znorm}_prior{effPrior}", minDCFarrayLinSVM)
+            
         print('trained')
     
     
@@ -172,6 +180,11 @@ if __name__ == "__main__":
                 minDCFLogReg = eval.computeMinDCF(llrsLogReg[i][1], correctEvalLabels, prior, Cfn, Cfp)
                 minDCFarrayLogReg.append([znorm, j, llrsLogReg[i][0], minDCFLogReg])
         
+        if saveResults:
+            
+            np.save(f"results/minDCFMVGarray_Znorm{znorm}_prior{effPrior}", minDCFarrayLogReg)
+            np.savetxt(f"results/minDCFMVGarray_Znorm{znorm}_prior{effPrior}", minDCFarrayLogReg)
+            
         print('trained')
 
     
@@ -180,29 +193,31 @@ if __name__ == "__main__":
     runGenerative = True
     if runGenerative:
         
-        znorm = False
+        znorm = True
         minDCFMVGarray = []
-        minDCFTiedMVGarray = []
-        minDCFNaiveMVGarray = []
+        minDCFTiedGarray = []
+        minDCFNBarray = []
+        minDCFTiedNBArray = []
 
         # to try out different pca directions
-        for j in range(10, 5, -1):
+        for j in range(11, 5, -1):
             
-            if(j == 10):
+            if(j == 11):
                 # without PCA
                 if znorm:
-                    DTR = helpers.ZNormalization(DTR)
+                    DTR, _, _ = helpers.ZNormalization(DTR)
                 kdata, klabels = helpers.splitToKFold(DTR, LTR, K=nFolds)
             
             else:
                 if znorm:
-                    DTR = helpers.ZNormalization(DTR)
+                    DTR, _, _ = helpers.ZNormalization(DTR)
                 reducedData, _ = preproc.computePCA(DTR, j)
                 kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
 
             sLogPostMVG = []
-            sLogPostTiedMVG = []
-            sLogPostNaiveMVG = []
+            sLogPostTiedG = []
+            sLogPostNB = []
+            sLogPostTiedNB = []
             
             correctEvalLabels = []
 
@@ -218,14 +233,16 @@ if __name__ == "__main__":
                 sLogPostMVG.append(sPostLogMVG)
                 
                 # tied MVG
-                _, sPostLogTiedMVG = generativeModels.logTiedMVG(trainingData, trainingLabels, evalData, 2, priorProb)
-                sLogPostTiedMVG.append(sPostLogTiedMVG)
+                _, sPostLogTiedG = generativeModels.logTiedMVG(trainingData, trainingLabels, evalData, 2, priorProb)
+                sLogPostTiedG.append(sPostLogTiedG)
                 
                 # naive
-                _, sPostLogNaiveMVG = generativeModels.logNaiveBayes(trainingData, trainingLabels, evalData, 2, priorProb)
-                sLogPostNaiveMVG.append(sPostLogNaiveMVG)
+                _, sPostLogNB = generativeModels.logNaiveBayes(trainingData, trainingLabels, evalData, 2, priorProb)
+                sLogPostNB.append(sPostLogNB)
                     
-                    #naivetied - we are not going to do it because the tied model performs worse than the untied
+                #naivetied - tied model is expected to perform worse than the untied
+                _, sPostLogTiedNB = generativeModels.logTiedNaiveBayes(trainingData, trainingLabels, evalData, 2, priorProb)
+                sLogPostTiedNB.append(sPostLogTiedNB)
             
             correctEvalLabels = np.hstack(correctEvalLabels)
 
@@ -233,31 +250,40 @@ if __name__ == "__main__":
             sLogPostMVG = np.hstack(sLogPostMVG)
             llrMVG = np.log(sLogPostMVG[1] / sLogPostMVG[0])
             minDCFMVG = eval.computeMinDCF(llrMVG, correctEvalLabels, prior, Cfn, Cfp)
-            minDCFMVGarray.append([j, minDCFMVG])
+            minDCFMVGarray.append([int(j), minDCFMVG])
             
             # eval of tied MVG
-            sLogPostTiedMVG = np.hstack(sLogPostTiedMVG)
-            llrTiedMVG = np.log(sLogPostTiedMVG[1] / sLogPostTiedMVG[0])
-            minDCFTiedMVG = eval.computeMinDCF(llrTiedMVG, correctEvalLabels, prior, Cfn, Cfp)
-            minDCFTiedMVGarray.append([j, minDCFTiedMVG])
+            sLogPostTiedG = np.hstack(sLogPostTiedG)
+            llrTiedG = np.log(sLogPostTiedG[1] / sLogPostTiedG[0])
+            minDCFTiedG = eval.computeMinDCF(llrTiedG, correctEvalLabels, prior, Cfn, Cfp)
+            minDCFTiedGarray.append([int(j), minDCFTiedG])
             
             # eval of tied MVG
-            sLogPostNaiveMVG = np.hstack(sLogPostNaiveMVG)
-            llrNaiveMVG = np.log(sLogPostNaiveMVG[1] / sLogPostNaiveMVG[0])
-            minDCFNaiveMVG = eval.computeMinDCF(llrNaiveMVG, correctEvalLabels, prior, Cfn, Cfp)
-            minDCFNaiveMVGarray.append([j, minDCFNaiveMVG])
-
-        save = True
-        if save:
-            np.save(f"results/minDCFMVGarray_Znorm{znorm}_prior{effPrior}", minDCFMVGarray)
-            np.savetxt(f"results/minDCFMVGarray_Znorm{znorm}_prior{effPrior}", minDCFMVGarray)
-
-            np.save(f"results/minDCFTiedMVGarray_Znorm{znorm}_prior{effPrior}", minDCFTiedMVGarray)
-            np.savetxt(f"results/minDCFTiedMVGarray_Znorm{znorm}_prior{effPrior}", minDCFTiedMVGarray)
+            sLogPostNB = np.hstack(sLogPostNB)
+            llrNB = np.log(sLogPostNB[1] / sLogPostNB[0])
+            minDCFNB = eval.computeMinDCF(llrNB, correctEvalLabels, prior, Cfn, Cfp)
+            minDCFNBarray.append([int(j), minDCFNB])
             
-            np.save(f"results/minDCFNaiveMVGarray_Znorm{znorm}_prior{effPrior}", minDCFNaiveMVGarray)
-            np.savetxt(f"results/minDCFNaiveMVGarray_Znorm{znorm}_prior{effPrior}", minDCFNaiveMVGarray)
+            # eval of tied naive G
+            sLogPostTiedNB = np.hstack(sLogPostTiedNB)
+            llrTiedNB = np.log(sLogPostTiedNB[1] / sLogPostTiedNB[0])
+            minDCFTiedNB = eval.computeMinDCF(llrTiedNB, correctEvalLabels, prior, Cfn, Cfp)
+            minDCFTiedNBArray.append([int(j), minDCFTiedNB])
+
+        if saveResults:
+            formattedPrior = "{:.2f}".format(effPrior)
             
+            np.save(f"results/npy/minDCFMVG_prior{formattedPrior}_Znorm{znorm}", minDCFMVGarray)
+            np.savetxt(f"results/txt/minDCFMVG_prior{formattedPrior}_Znorm{znorm}", minDCFMVGarray)
+
+            np.save(f"results/npy/minDCFTiedG_prior{formattedPrior}_Znorm{znorm}", minDCFTiedGarray)
+            np.savetxt(f"results/txt/minDCFTiedG_prior{formattedPrior}_Znorm{znorm}", minDCFTiedGarray)
+            
+            np.save(f"results/npy/minDCFNB_prior{formattedPrior}_Znorm{znorm}", minDCFNBarray)
+            np.savetxt(f"results/txt/minDCFNB_prior{formattedPrior}_Znorm{znorm}", minDCFNBarray)
+            
+            np.save(f"results/npy/minDCFTiedNB_prior{formattedPrior}_Znorm{znorm}", minDCFTiedNBArray)
+            np.savetxt(f"results/txt/minDCFTiedNB_prior{formattedPrior}_Znorm{znorm}", minDCFTiedNBArray)
 
 
         print("finished")
