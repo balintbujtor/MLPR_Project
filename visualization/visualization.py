@@ -92,7 +92,7 @@ def plotBayesError(effPriorLogOdds: np.ndarray, scores : np.ndarray, labels: np.
     return normDCFs, minDCFs
 
 
-def plotLogRegDCFs(DCFs: np.ndarray, title: str, xparam: str, PCAdims: int):
+def plotLogRegDCFs(DCFs: np.ndarray, path: str, title: str, xparam: str, PCAdims: int):
     plt.figure()
     
     for pcadim in PCAdims:
@@ -114,7 +114,7 @@ def plotLogRegDCFs(DCFs: np.ndarray, title: str, xparam: str, PCAdims: int):
     plt.xlabel(xparam)
     plt.ylabel('minDCF')
     plt.title(title)
-    plt.savefig(title)
+    plt.savefig(path)
     plt.xlim(min(x_values), max(x_values))
     plt.grid(True)
     plt.show()

@@ -130,7 +130,7 @@ if __name__ == "__main__":
     
     # logistic regression
     runLogReg = True
-    znorm = False
+    znorm = True
     if runLogReg:
         
         minDCFarrayLogReg = []
@@ -210,9 +210,8 @@ if __name__ == "__main__":
     showResults = True
     if showResults:
         formattedPrior = "{:.2f}".format(effPrior)
-        znorm = True
         logRegResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{znorm}.npy")
-        vis.plotLogRegDCFs(logRegResults, "Logistic Regression", "lambdas", range(11, 7, -1))
+        vis.plotLogRegDCFs(logRegResults, f"results/img/minDCFLogReg_prior{formattedPrior}_Znorm{znorm}", 'Linear Logistic Regression', "lambdas", range(11, 7, -1))
     
     runGenerative = False
     if runGenerative:
