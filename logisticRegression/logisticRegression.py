@@ -100,3 +100,45 @@ class logRegClassifier:
         predictions = score > thr
         
         return score, predictions
+    
+def transformTrainAndTestToQuadratic(DTR: np.ndarray, DTE: np.ndarray) -> np.ndarray:
+    """Transforms the train and test data to quadratic form
+
+    Args:
+        DTR (np.ndarray): Train data
+        DTE (np.ndarray): Test data
+
+    Returns:
+        np.ndarray: Transformed train data
+        np.ndarray: Transformed test data
+    """
+    qDTR = np.zeros((DTR.shape[0] ** 2 + DTR.shape[0], DTR.shape[1]))
+    qDTE = np.zeros((DTR.shape[0] ** 2 + DTR.shape[0], DTE.shape[1]))
+
+    for i in range(DTR.shape[1]):
+        qDTR[:, i:i + 1] = stackArray(DTR[:, i:i + 1])
+    for i in range(DTE.shape[1]):
+        qDTE[:, i:i + 1] = stackArray(DTE[:, i:i + 1])
+
+    return qDTR, qDTE
+
+
+def stackArray(array: np.ndarray) -> np.ndarray:
+    """
+    Stacks the array in a quadratic form
+
+    Args:
+        array (np.ndarray): array to be stacked
+
+    Returns:
+        np.ndarray: stacked array
+    """
+    
+    n_f = array.shape[0]
+    xx_t = np.dot(array, array.T)
+    column = np.zeros((n_f ** 2 + n_f, 1))
+    for i in range(n_f):
+        column[i * n_f:i * n_f + n_f, :] = xx_t[:, i:i + 1]
+    column[n_f ** 2: n_f ** 2 + n_f, :] = array
+    
+    return column

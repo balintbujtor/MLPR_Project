@@ -57,7 +57,7 @@ if __name__ == "__main__":
     # setting up working point and eff prior
     prior = 0.5
     Cfn = 1
-    Cfp = 1
+    Cfp = 10
     effPrior = (prior*Cfn)/(prior*Cfn + (1 - prior)*Cfp)
     priorProb = np.asarray([[effPrior], [1 - effPrior]])
     
@@ -129,17 +129,17 @@ if __name__ == "__main__":
     
     
     # logistic regression
-    runLogReg = False
+    runLogReg = True
     znorm = False
     if runLogReg:
         
         minDCFarrayLogReg = []
-        minDCFarrayZLogReg = []
+        minDCFarrayQLogReg = []
         
-        for j in range(10, 6, -1):
+        for j in range(11, 7, -1):
             
             # no pca
-            if(j == 10):
+            if(j == 11):
                 if znorm:
                     DTR, _, _ = helpers.ZNormalization(DTR)
                 kdata, klabels = helpers.splitToKFold(DTR, LTR, K=nFolds)
@@ -150,47 +150,71 @@ if __name__ == "__main__":
                 reducedData, _ = preproc.computePCA(DTR, j)
                 kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
                 
-            correctEvalLabels = []
             llrsLogReg = []
+            llrsQLogReg = []
             
-            for i in range(0, nFolds):
+            lambdas = np.logspace(-6, 4, 11)
+            
+            for l in range(len(lambdas)):
+                curLambda = lambdas[l]
                 
-                trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)                
+                correctEvalLabels = []
                 
-                for l_iter in range(0, 6):
+                llrsLogReg.append([curLambda, []])
+                llrsQLogReg.append([curLambda, []])
+                
+                for i in range(0, nFolds):
                     
-                    curLambda = 10**l_iter*1e-5
-                    if(i == 0):
-                        llrsLogReg.append([curLambda, []])
-                    
-                    # TODO: check with Kasia if prior stuff is ok
+                    trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)                
+                    correctEvalLabels.append(evalLabels)
+
+                    # training Linear Logistic Regression
                     logRegObj = logReg.logRegClassifier(DTR=trainingData, LTR=trainingLabels, l=curLambda, pi=effPrior)
                     wtrain, btrain = logRegObj.trainBin()  
                     logScores, preds = logRegObj.evaluateBin(DTE=evalData, w=wtrain, b=btrain, thr=np.log(effPrior))
                     
-                    llrsLogReg[l_iter][1].append(logScores)
-                
-                correctEvalLabels.append(evalLabels)
+                    llrsLogReg[l][1].append(logScores)
+                    
+                    # training Quadratic Logistic Regression
+                    qtrainingData, qEvalData = logReg.transformTrainAndTestToQuadratic(trainingData, evalData)
+                    
+                    qLogRegObj = logReg.logRegClassifier(DTR=qtrainingData, LTR=trainingLabels, l=curLambda, pi=effPrior)
+                    qwtrain, qbtrain = qLogRegObj.trainBin()
+                    qlogScores, qpreds = qLogRegObj.evaluateBin(DTE=qEvalData, w=qwtrain, b=qbtrain, thr=np.log(effPrior))
+                    
+                    llrsQLogReg[l][1].append(qlogScores)
 
                 
             correctEvalLabels = np.hstack(correctEvalLabels)
             for i in range(len(llrsLogReg)):
-                llrsLogReg[i][1] = np.hstack(llrsLogReg[i][1])
                 
+                llrsLogReg[i][1] = np.hstack(llrsLogReg[i][1])
                 minDCFLogReg = eval.computeMinDCF(llrsLogReg[i][1], correctEvalLabels, prior, Cfn, Cfp)
-                minDCFarrayLogReg.append([znorm, j, llrsLogReg[i][0], minDCFLogReg])
+                minDCFarrayLogReg.append([j, llrsLogReg[i][0], minDCFLogReg])
+                
+                llrsQLogReg[i][1] = np.hstack(llrsQLogReg[i][1])
+                minDCFQLogReg = eval.computeMinDCF(llrsQLogReg[i][1], correctEvalLabels, prior, Cfn, Cfp)
+                minDCFarrayQLogReg.append([j, llrsQLogReg[i][0], minDCFQLogReg])
         
         if saveResults:
+            formattedPrior = "{:.2f}".format(effPrior)
+
+            np.save(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{znorm}", minDCFarrayLogReg)
+            np.savetxt(f"results/txt/minDCFLogReg_prior{formattedPrior}_Znorm{znorm}", minDCFarrayLogReg)
             
-            np.save(f"results/minDCFMVGarray_Znorm{znorm}_prior{effPrior}", minDCFarrayLogReg)
-            np.savetxt(f"results/minDCFMVGarray_Znorm{znorm}_prior{effPrior}", minDCFarrayLogReg)
+            np.save(f"results/npy/minDCFQLogReg_prior{formattedPrior}_Znorm{znorm}", minDCFarrayQLogReg)
+            np.savetxt(f"results/txt/minDCFQLogReg_prior{formattedPrior}_Znorm{znorm}", minDCFarrayQLogReg)
             
         print('trained')
 
+    showResults = True
+    if showResults:
+        formattedPrior = "{:.2f}".format(effPrior)
+        znorm = True
+        logRegResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{znorm}.npy")
+        vis.plotLogRegDCFs(logRegResults, "Logistic Regression", "lambdas", range(11, 7, -1))
     
-    
-    
-    runGenerative = True
+    runGenerative = False
     if runGenerative:
         
         znorm = True
@@ -232,7 +256,7 @@ if __name__ == "__main__":
                 _, sPostLogMVG = generativeModels.logMVG(trainingData, trainingLabels, evalData, 2, priorProb)
                 sLogPostMVG.append(sPostLogMVG)
                 
-                # tied MVG
+                # tied G
                 _, sPostLogTiedG = generativeModels.logTiedMVG(trainingData, trainingLabels, evalData, 2, priorProb)
                 sLogPostTiedG.append(sPostLogTiedG)
                 
@@ -258,13 +282,13 @@ if __name__ == "__main__":
             minDCFTiedG = eval.computeMinDCF(llrTiedG, correctEvalLabels, prior, Cfn, Cfp)
             minDCFTiedGarray.append([int(j), minDCFTiedG])
             
-            # eval of tied MVG
+            # eval of NB
             sLogPostNB = np.hstack(sLogPostNB)
             llrNB = np.log(sLogPostNB[1] / sLogPostNB[0])
             minDCFNB = eval.computeMinDCF(llrNB, correctEvalLabels, prior, Cfn, Cfp)
             minDCFNBarray.append([int(j), minDCFNB])
             
-            # eval of tied naive G
+            # eval of tied NB
             sLogPostTiedNB = np.hstack(sLogPostTiedNB)
             llrTiedNB = np.log(sLogPostTiedNB[1] / sLogPostTiedNB[0])
             minDCFTiedNB = eval.computeMinDCF(llrTiedNB, correctEvalLabels, prior, Cfn, Cfp)
