@@ -92,31 +92,42 @@ def plotBayesError(effPriorLogOdds: np.ndarray, scores : np.ndarray, labels: np.
     return normDCFs, minDCFs
 
 
-def plotLogRegDCFs(DCFs: np.ndarray, path: str, title: str, xparam: str, PCAdims: int):
+def plotLogRegDCFs(modelsToShow: list, modelNames: list, title: str, xparam: str, PCAdims: int):
     plt.figure()
+    plt.grid(True)
     
-    for pcadim in PCAdims:
-        arr = []
-        for i in range(len(DCFs)):
-            if DCFs[i][0] == pcadim:
-                arr.append([DCFs[i][1], DCFs[i][2]])
+    lines = ["-","--","-.",":"]
+    displayedLegend = []
+    for m, model in enumerate(modelsToShow):
         
-        # Extract x and y values for plotting
-        x_values = [point[0] for point in arr]
-        y_values = [point[1] for point in arr]
+        color = iter(plt.cm.rainbow(np.linspace(0, 1, len(PCAdims))))
 
-        # Plot the data
-        plt.plot(x_values, y_values)
-        plt.xscale('log')
-    
-    displayedLegend = ['RAW' if i == 11 else i for i in PCAdims]
+        for pcadim in PCAdims:
+            arr = []
+            for i in range(len(model)):
+                if model[i][0] == pcadim:
+                    arr.append([model[i][1], model[i][2]])
+            
+            # Extract x and y values for plotting
+            x_values = [point[0] for point in arr]
+            y_values = [point[1] for point in arr]
+
+            # Plot the data
+            c = next(color)
+            plt.plot(x_values, y_values, linestyle=lines[m], color=c)
+            plt.xlim(min(x_values), max(x_values))
+            curDim = "RAW" if pcadim == 11 else pcadim
+            curLegend = f'{modelNames[m]} - {curDim}'
+            displayedLegend.append(curLegend)
+
     plt.legend(displayedLegend)
+    
+    plt.xscale('log')
     plt.xlabel(xparam)
     plt.ylabel('minDCF')
     plt.title(title)
-    plt.savefig(path)
-    plt.xlim(min(x_values), max(x_values))
-    plt.grid(True)
+    
+    plt.savefig(f'results/img/{title}.png')
     plt.show()
     plt.clf()
 

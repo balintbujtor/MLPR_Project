@@ -129,8 +129,8 @@ if __name__ == "__main__":
     
     
     # logistic regression
-    runLogReg = True
-    znorm = True
+    runLogReg = False
+    znorm = False
     if runLogReg:
         
         minDCFarrayLogReg = []
@@ -204,15 +204,21 @@ if __name__ == "__main__":
             
             np.save(f"results/npy/minDCFQLogReg_prior{formattedPrior}_Znorm{znorm}", minDCFarrayQLogReg)
             np.savetxt(f"results/txt/minDCFQLogReg_prior{formattedPrior}_Znorm{znorm}", minDCFarrayQLogReg)
-            
+
+            formattedPrior = "{:.2f}".format(effPrior)
+            logRegResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{False}.npy")
+            zLogRegResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{True}.npy")
+            modelsToShow = [logRegResults, zLogRegResults]
+            vis.plotLogRegDCFs(modelsToShow, ["LR", "z-LR"], f'Linear Logistic Regression minDCFs - effPrior: {formattedPrior}', "lambda", range(11, 7, -1))
+
+            qLogRegResults = np.load(f"results/npy/minDCFQLogReg_prior{formattedPrior}_Znorm{False}.npy")
+            zQLogRegResults = np.load(f"results/npy/minDCFQLogReg_prior{formattedPrior}_Znorm{True}.npy")
+            modelsToShow = [qLogRegResults, zQLogRegResults]
+            vis.plotLogRegDCFs(modelsToShow, ["Q-LR", "z-Q-LR"], f'Quadratic Logistic Regression minDCFs - effPrior: {formattedPrior}', "lambda", range(11, 7, -1))
+
         print('trained')
 
-    showResults = True
-    if showResults:
-        formattedPrior = "{:.2f}".format(effPrior)
-        logRegResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{znorm}.npy")
-        vis.plotLogRegDCFs(logRegResults, f"results/img/minDCFLogReg_prior{formattedPrior}_Znorm{znorm}", 'Linear Logistic Regression', "lambdas", range(11, 7, -1))
-    
+
     runGenerative = False
     if runGenerative:
         
