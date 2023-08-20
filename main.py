@@ -16,7 +16,7 @@ if __name__ == "__main__":
     # DTE, LTE = loader.loadData('data/Test.txt')
     
     saveResults = True
-    
+    plotResults = False
     runInitAnalysis = False
     
     if runInitAnalysis:
@@ -67,20 +67,19 @@ if __name__ == "__main__":
     nFolds = 5
     
     #SVM
-    
-    #linear
-        #PCA 9, 7 - no pca
-        #znorm -no znorm
     runSVM = False
+    znorm = False
     if runSVM:
         
-        pcaTrials = [10, 9, 7]
-        znorm = False
         minDCFarrayLinSVM = []
+        minDCFarrayPoliSVM = [] 
+        minDCFarrayRbfSVM = []
         
-        for pcadim in pcaTrials:
-
-            if(pcadim == 10):
+        # Linear SVM
+        for dim in range(11, 7, -1):
+            
+            # no pca
+            if(dim == 11):
                 if znorm:
                     DTR, _, _ = helpers.ZNormalization(DTR)
                 kdata, klabels = helpers.splitToKFold(DTR, LTR, K=nFolds)
@@ -88,43 +87,60 @@ if __name__ == "__main__":
                 if znorm:
                     DTR, _, _ = helpers.ZNormalization(DTR)
 
-                reducedData, _ = preproc.computePCA(DTR, pcadim)
+                reducedData, _ = preproc.computePCA(DTR, dim)
                 kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
-            
-            
-            correctEvalLabels = []
-            llrsLinearSVM = []
-            
-            for i in range(0, nFolds):
-            
-                trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)                
                 
-                for c_iter in range(0, 6):
+            llrsLinSVM = []
+            
+            Cs = np.logspace(-6, 4, 11)
+            
+            for c in range(len(Cs)):
+                
+                curC = Cs[c]
+                correctEvalLabels = []
+                llrsLinSVM.append([curC, []])
+                
+                for i in range(0, nFolds):
                     
-                    curC = 10**c_iter*1e-4
-                    if(i == 0):
-                        llrsLinearSVM.append([curC, []])
-                    
+                    trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)                
+                    correctEvalLabels.append(evalLabels)
+
+                    # training Linear SVM, without class rebalancing
                     linSVMObj = svm.LinearSVMClassifier(trainData=trainingData, trainLabels=trainingLabels)
-                    alphaStar, wStar, primalLoss, dualLoss = linSVMObj.train(curC)
-                    logScores, preds = linSVMObj.predict(evalData, wStar, np.log(effPrior))
+                    linAlpha, linW, linPrimal, linDual = linSVMObj.train(curC)
+                    linLogScores, linPreds = linSVMObj.predict(evalData, linW)
                     
-                    llrsLinearSVM[c_iter][1].append(logScores)
-                
-                correctEvalLabels.append(evalLabels)
+                    llrsLinSVM[c][1].append(linLogScores)
+                    
+                    # TODO: move it to different kfold training loop
+                    # training Polynomial SVM without class rebalancing
+                    # poliSVMObj = svm.KernelSVMClassifier(trainData=trainingData, trainLabels=trainingLabels)
+                    # poliKernel = svm.polyKernelWrapper(1,2,0)
+                    # poliAlpha, poliW, poliPrimal, poliDual = poliSVMObj.train(curC, kernel=poliKernel)
+                    # poliLogScores, poliPreds = poliSVMObj.predict(evalData, poliW, kernel=poliKernel)
+
                 
             correctEvalLabels = np.hstack(correctEvalLabels)
-            for i in range(len(llrsLinearSVM)):
-                llrsLinearSVM[i][1] = np.hstack(llrsLinearSVM[i][1])
+            for i in range(len(llrsLinSVM)):
                 
-                minDCFLinSVM = eval.computeMinDCF(llrsLinearSVM[i][1], correctEvalLabels, prior, Cfn, Cfp)
-                minDCFarrayLinSVM.append([znorm, pcadim, llrsLinearSVM[i][0], minDCFLinSVM])
+                llrsLinSVM[i][1] = np.hstack(llrsLinSVM[i][1])
+                minDCFLinSVM = eval.computeMinDCF(llrsLinSVM[i][1], correctEvalLabels, prior, Cfn, Cfp)
+                minDCFarrayLinSVM.append([dim, llrsLinSVM[i][0], minDCFLinSVM])
         
+        
+        formattedPrior = "{:.2f}".format(effPrior)
         if saveResults:
+
+            np.save(f"results/npy/minDCFLinSVM_prior{formattedPrior}_Znorm{znorm}", minDCFarrayLinSVM)
+            np.savetxt(f"results/txt/minDCFLinSVM_prior{formattedPrior}_Znorm{znorm}", minDCFarrayLinSVM)
+        
+        if plotResults:
             
-            np.save(f"results/minDCFMVGarray_Znorm{znorm}_prior{effPrior}", minDCFarrayLinSVM)
-            np.savetxt(f"results/minDCFMVGarray_Znorm{znorm}_prior{effPrior}", minDCFarrayLinSVM)
-            
+            LinSVMResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{False}.npy")
+            zLinSVMResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{True}.npy")
+            modelsToShow = [LinSVMResults, zLinSVMResults]
+            vis.plotLogRegDCFs(modelsToShow, ["Linear SVM", "Z-normed LinSVM"], f'Linear SVM minDCFs - effPrior: {formattedPrior}', "C", range(11, 7, -1))
+
         print('trained')
     
     
@@ -171,7 +187,7 @@ if __name__ == "__main__":
                     # training Linear Logistic Regression
                     logRegObj = logReg.logRegClassifier(DTR=trainingData, LTR=trainingLabels, l=curLambda, pi=effPrior)
                     wtrain, btrain = logRegObj.trainBin()  
-                    logScores, preds = logRegObj.evaluateBin(DTE=evalData, w=wtrain, b=btrain, thr=np.log(effPrior))
+                    logScores, _ = logRegObj.evaluateBin(DTE=evalData, w=wtrain, b=btrain)
                     
                     llrsLogReg[l][1].append(logScores)
                     
@@ -180,7 +196,7 @@ if __name__ == "__main__":
                     
                     qLogRegObj = logReg.logRegClassifier(DTR=qtrainingData, LTR=trainingLabels, l=curLambda, pi=effPrior)
                     qwtrain, qbtrain = qLogRegObj.trainBin()
-                    qlogScores, qpreds = qLogRegObj.evaluateBin(DTE=qEvalData, w=qwtrain, b=qbtrain, thr=np.log(effPrior))
+                    qlogScores, _ = qLogRegObj.evaluateBin(DTE=qEvalData, w=qwtrain, b=qbtrain)
                     
                     llrsQLogReg[l][1].append(qlogScores)
 
@@ -205,7 +221,6 @@ if __name__ == "__main__":
             np.save(f"results/npy/minDCFQLogReg_prior{formattedPrior}_Znorm{znorm}", minDCFarrayQLogReg)
             np.savetxt(f"results/txt/minDCFQLogReg_prior{formattedPrior}_Znorm{znorm}", minDCFarrayQLogReg)
 
-            formattedPrior = "{:.2f}".format(effPrior)
             logRegResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{False}.npy")
             zLogRegResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{True}.npy")
             modelsToShow = [logRegResults, zLogRegResults]
@@ -218,7 +233,141 @@ if __name__ == "__main__":
 
         print('trained')
 
+    trainBestLogRegWDifferentPT = False
+    if trainBestLogRegWDifferentPT:
 
+        # model A
+        reducedData9, _ = preproc.computePCA(DTR, 9)
+        kdata9, klabels9 = helpers.splitToKFold(reducedData9, LTR, K=nFolds)
+
+        # model B
+        DTRZ, _, _ = helpers.ZNormalization(DTR)
+        reducedData8, _ = preproc.computePCA(DTRZ, 8)
+        kdata8, klabels8 = helpers.splitToKFold(reducedData8, LTR, K=nFolds)
+        
+        pTs = [0.05, 0.5, 0.9]
+
+        minDCFarrayLogReg8 = []
+        minDCFarrayLogReg9 = []
+        llrsLogReg8 = []
+        llrsLogReg9 = []
+        
+        for pT in pTs:
+            
+            llrsLogReg8.append([pT, []])
+            llrsLogReg9.append([pT, []])
+            correctEvalLabels9 = []
+            correctEvalLabels8 = []
+            
+            for i in range(0, nFolds):
+                
+                trainingData9, trainingLabels9, evalData9, evalLabels9 = helpers.getCurrentKFoldSplit(kdata9, klabels9, i, nFolds)
+                trainingData8, trainingLabels8, evalData8, evalLabels8 = helpers.getCurrentKFoldSplit(kdata8, klabels8, i, nFolds)
+                correctEvalLabels9.append(evalLabels9)
+                correctEvalLabels8.append(evalLabels8)
+                
+                # training Linear Logistic Regression candidate A
+                logRegObj9 = logReg.logRegClassifier(DTR=trainingData9, LTR=trainingLabels9, l=10e-2, pi=pT)
+                wtrain9, btrain9 = logRegObj9.trainBin()
+                logScores9, _ = logRegObj9.evaluateBin(DTE=evalData9, w=wtrain9, b=btrain9)
+                llrsLogReg9[-1][1].append(logScores9)
+                
+                # training Linear Logistic Regression candidate B
+                logRegObj8 = logReg.logRegClassifier(DTR=trainingData8, LTR=trainingLabels8, l=10e-5, pi=pT)
+                wtrain8, btrain8 = logRegObj8.trainBin()
+                logScores8, _ = logRegObj8.evaluateBin(DTE=evalData8, w=wtrain8, b=btrain8)           
+                llrsLogReg8[-1][1].append(logScores8)
+                
+        
+        correctEvalLabels9 = np.hstack(correctEvalLabels9)
+        correctEvalLabels8 = np.hstack(correctEvalLabels8) 
+        for i in range(len(llrsLogReg8)):
+            
+            llrsLogReg8[i][1] = np.hstack(llrsLogReg8[i][1])
+            minDCFLogReg8 = eval.computeMinDCF(llrsLogReg8[i][1], correctEvalLabels8, prior, Cfn, Cfp)
+            minDCFarrayLogReg8.append([llrsLogReg8[i][0], minDCFLogReg8])
+            
+            llrsLogReg9[i][1] = np.hstack(llrsLogReg9[i][1])
+            minDCFLogReg9 = eval.computeMinDCF(llrsLogReg9[i][1], correctEvalLabels9, prior, Cfn, Cfp)
+            minDCFarrayLogReg9.append([llrsLogReg9[i][0], minDCFLogReg9])
+    
+        if saveResults:
+            
+            formattedPrior = "{:.2f}".format(effPrior)
+            np.save(f"results/npy/minDCFLogRegPCA8_lambda10e-5_prior{formattedPrior}_Znorm{True}", minDCFarrayLogReg8)
+            np.savetxt(f"results/txt/minDCFLogRegPCA8_lambda10e-5_prior{formattedPrior}_Znorm{True}", minDCFarrayLogReg8)
+            
+            np.save(f"results/npy/minDCFLogRegPCA9_lambda10e-2_prior{formattedPrior}_Znorm{False}", minDCFarrayLogReg9)
+            np.savetxt(f"results/txt/minDCFLogRegPCA9_lambda10e-2_prior{formattedPrior}_Znorm{False}", minDCFarrayLogReg9)
+
+    # TODO: refactor this
+    trainBestQLogRegWDifferentPT = True
+    if trainBestQLogRegWDifferentPT:
+        # model C
+        reducedDataQ8, _ = preproc.computePCA(DTR, 8)
+        kdataQ8, klabelsQ8 = helpers.splitToKFold(reducedDataQ8, LTR, K=nFolds)
+
+        # model D
+        DTRZ, _, _ = helpers.ZNormalization(DTR)
+        kdataQ10, klabelsQ10 = helpers.splitToKFold(DTRZ, LTR, K=nFolds)
+        
+        pTs = [0.05, 0.5, 0.9]
+
+        minDCFarrayLogRegQ8 = []
+        minDCFarrayLogRegQ10 = []
+        llrsLogRegQ8 = []
+        llrsLogRegQ10 = []
+        
+        for pT in pTs:
+            
+            llrsLogRegQ8.append([pT, []])
+            llrsLogRegQ10.append([pT, []])
+            correctEvalLabelsQ8 = []
+            correctEvalLabelsQ10 = []
+            
+            for i in range(0, nFolds):
+                
+                trainingDataQ8, trainingLabelsQ8, evalDataQ8, evalLabelsQ8 = helpers.getCurrentKFoldSplit(kdataQ8, klabelsQ8, i, nFolds)
+                trainingDataQ10, trainingLabelsQ10, evalDataQ10, evalLabelsQ10 = helpers.getCurrentKFoldSplit(kdataQ10, klabelsQ10, i, nFolds)
+                correctEvalLabelsQ8.append(evalLabelsQ8)
+                correctEvalLabelsQ10.append(evalLabelsQ10)
+                
+                # training QUADRATIC Logistic Regression candidate C
+                qtrainingDataQ8, qEvalDataQ8 = logReg.transformTrainAndTestToQuadratic(trainingDataQ8, evalDataQ8)
+                logRegObjQ8 = logReg.logRegClassifier(DTR=qtrainingDataQ8, LTR=trainingLabelsQ8, l=10e-2, pi=pT)
+                wtrainQ8, btrainQ8 = logRegObjQ8.trainBin()
+                logScoresQ8, _ = logRegObjQ8.evaluateBin(DTE=qEvalDataQ8, w=wtrainQ8, b=btrainQ8)
+                llrsLogRegQ8[-1][1].append(logScoresQ8)
+                
+                # training QUDARATIC Logistic Regression candidate D
+                qtrainingDataQ10, qEvalDataQ10 = logReg.transformTrainAndTestToQuadratic(trainingDataQ10, evalDataQ10)
+                logRegObjQ10 = logReg.logRegClassifier(DTR=qtrainingDataQ10, LTR=trainingLabelsQ10, l=10e-3, pi=pT)
+                wtrainQ10, btrainQ10 = logRegObjQ10.trainBin()
+                logScoresQ10, _ = logRegObjQ10.evaluateBin(DTE=qEvalDataQ10, w=wtrainQ10, b=btrainQ10)           
+                llrsLogRegQ10[-1][1].append(logScoresQ10)
+                
+        
+        correctEvalLabelsQ8 = np.hstack(correctEvalLabelsQ8)
+        correctEvalLabelsQ10 = np.hstack(correctEvalLabelsQ10) 
+        for i in range(len(llrsLogRegQ8)):
+            
+            llrsLogRegQ8[i][1] = np.hstack(llrsLogRegQ8[i][1])
+            minDCFLogRegQ8 = eval.computeMinDCF(llrsLogRegQ8[i][1], correctEvalLabelsQ8, prior, Cfn, Cfp)
+            minDCFarrayLogRegQ8.append([llrsLogRegQ8[i][0], minDCFLogRegQ8])
+            
+            llrsLogRegQ10[i][1] = np.hstack(llrsLogRegQ10[i][1])
+            minDCFLogRegQ10 = eval.computeMinDCF(llrsLogRegQ10[i][1], correctEvalLabelsQ10, prior, Cfn, Cfp)
+            minDCFarrayLogRegQ10.append([llrsLogRegQ10[i][0], minDCFLogRegQ10])
+    
+        if saveResults:
+            
+            formattedPrior = "{:.2f}".format(effPrior)
+            np.save(f"results/npy/minDCFQuadLogRegPCA8_lambda10e-2_prior{formattedPrior}_Znorm{False}", minDCFarrayLogRegQ8)
+            np.savetxt(f"results/txt/minDCFQuadLogRegPCA8_lambda10e-2_prior{formattedPrior}_Znorm{False}", minDCFarrayLogRegQ8)
+            
+            np.save(f"results/npy/minDCFQuadLogRegNoPCA_lambda10e-3_prior{formattedPrior}_Znorm{True}", minDCFarrayLogRegQ10)
+            np.savetxt(f"results/txt/minDCFQuadLogRegNoPCA_lambda10e-3_prior{formattedPrior}_Znorm{True}", minDCFarrayLogRegQ10)
+            
     runGenerative = False
     if runGenerative:
         
