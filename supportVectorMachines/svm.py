@@ -1,10 +1,21 @@
 import numpy as np
 import scipy.optimize as spoptim
 import helpers.helpers as helpers
+import preprocessing.preprocessing as preproc
 
+def computeBalancedCArray(labels: np.ndarray, C: float, pT: float):
+    
+    zeros = np.zeros(labels.shape[1])
+    CArray = zeros
+    empiricalPT = np.sum(labels == 1) / labels.shape[1]
+    CArray[labels == 1] = C * pT / empiricalPT
+    CArray[labels == 0] = C * (1 - pT) / (1 - empiricalPT)
+    boxConstraints = np.asarray(list(zip(zeros, CArray)))
+    
+    return boxConstraints
 
 class LinearSVMClassifier:
-    def __init__(self, trainData, trainLabels) -> None:
+    def __init__(self, trainData: np.ndarray, trainLabels: np.ndarray) -> None:
         self.trainData = trainData
         self.trainLabels = trainLabels
         self.numClasses = len(set(self.trainLabels)) # number of classes
@@ -21,7 +32,7 @@ class LinearSVMClassifier:
         return LHat, LHatGradient
     
     
-    def computePrimalObjective(self, wStar, C):
+    def computePrimalObjective(self, wStar: np.ndarray, C: float):
         
         primalLoss = 0
         regularizer = 0.5 * (np.linalg.norm(wStar)**2)
@@ -38,10 +49,16 @@ class LinearSVMClassifier:
         return primalLoss
     
     
-    def train(self, C: float, k: float = 1):
-        Carray = np.ones((self.numSamples, ))*C
-        zeros = np.zeros(self.numSamples,)
-        boxConstraints = np.asarray(list(zip(zeros, Carray)))
+    def train(self, C: float, pT: float = None, k: float = 1):
+        
+        if pT == None:
+            Carray = np.ones((self.numSamples, ))*C
+            zeros = np.zeros(self.numSamples,)
+            boxConstraints = np.asarray(list(zip(zeros, Carray)))
+            
+        else:
+            boxConstraints = computeBalancedCArray(self.trainLabels, C, pT)
+            
         Karray = np.ones((1, self.numSamples))*k
         self.trainDataHat = np.vstack([self.trainData, Karray])
         
@@ -61,7 +78,7 @@ class LinearSVMClassifier:
         return alphaStar, wStar, primalLoss, dualLoss
     
     
-    def predict(self, testData, wStar, threshold: float = 0, k: float = 1):
+    def predict(self, testData: np.ndarray, wStar: np.ndarray, threshold: float = 0, k: float = 1):
         
         w = wStar[:-1]
         b = wStar[-1]
@@ -74,9 +91,9 @@ class LinearSVMClassifier:
         
 
 
-def polyKernelWrapper(c, d, ksi):
+def polyKernelWrapper(c: float, d: float, ksi: float):
 
-    def polyKernel(x1, x2):
+    def polyKernel(x1: np.ndarray, x2: np.ndarray):
         
         result = (np.dot(x1.T, x2) + c)**d + np.sqrt(ksi)
         
@@ -85,9 +102,9 @@ def polyKernelWrapper(c, d, ksi):
     return polyKernel
 
 
-def RBFKernelWrapper(gamma, ksi):
+def RBFKernelWrapper(gamma: float, ksi: float):
     
-    def radialBiasFunctionKernel(x1, x2):
+    def radialBasisFunctionKernel(x1: np.ndarray, x2: np.ndarray):
         
         result = np.empty((x1.shape[1],x2.shape[1]))
         
@@ -97,11 +114,11 @@ def RBFKernelWrapper(gamma, ksi):
 
         return result + np.sqrt(ksi)
     
-    return radialBiasFunctionKernel
+    return radialBasisFunctionKernel
 
-
+# TODO: refactor SVM to have only one class
 class KernelSVMClassifier:
-    def __init__(self, trainData, trainLabels) -> None:
+    def __init__(self, trainData: np.ndarray, trainLabels: np.ndarray) -> None:
         self.trainData = trainData
         self.trainLabels = trainLabels
         self.numClasses = len(set(self.trainLabels)) # number of classes
@@ -118,24 +135,28 @@ class KernelSVMClassifier:
         return LHat, LHatGradient
     
     
-    def train(self, C: float, kernelFunc):
+    def train(self, C: float, kernelFunc, pT: float = None):
         
-        Carray = np.ones((self.numSamples, ))*C
-        zeros = np.zeros(self.numSamples,)
-        boxConstraints = np.asarray(list(zip(zeros, Carray)))
+        if pT == None:
+            Carray = np.ones((self.numSamples, ))*C
+            zeros = np.zeros(self.numSamples,)
+            boxConstraints = np.asarray(list(zip(zeros, Carray)))
+            
+        else:
+            boxConstraints = computeBalancedCArray(self.trainLabels, C, pT)
         
         Z = helpers.vrow(2 * self.trainLabels - 1)
         self.HHat = Z * Z.T * kernelFunc(self.trainData, self.trainData)
         
         x0 = np.zeros(self.numSamples)   
         
-        # dualLoss is neg bc w comput LHatD not JHatD!!
+        # dualLoss is neg bc we compute LHatD not JHatD!!
         alphaStar, dualLoss, info = spoptim.fmin_l_bfgs_b(self.computeDualObjective, x0, bounds=boxConstraints, factr=1.0, maxfun=100000, maxiter=100000)
         
         return alphaStar, dualLoss
     
     
-    def predict(self, testData, alphaStar, threshold, kernelFunc):
+    def predict(self, testData, alphaStar, kernelFunc, threshold: float = 0):
         
         Z = helpers.vcol(2 * self.trainLabels - 1)
                 
@@ -143,3 +164,80 @@ class KernelSVMClassifier:
         predictions = score > threshold
     
         return predictions
+
+
+def trainSVMClassifiers(startPCA: int, endPCA: int, DTR: np.ndarray, LTR: np.ndarray, workingPoint: list, nFolds: int, znorm: bool, type: str) -> np.ndarray:
+
+    prior, Cfn, Cfp = workingPoint
+    effPrior = (prior*Cfn)/(prior*Cfn + (1 - prior)*Cfp)
+    
+    minDCFarray = []
+    
+    for dim in range(startPCA, endPCA, -1):
+        
+        # no pca
+        if(dim == 11):
+            if znorm:
+                DTR, _, _ = preproc.zNormalization(DTR)
+            kdata, klabels = helpers.splitToKFold(DTR, LTR, K=nFolds)
+        else:
+            if znorm:
+                DTR, _, _ = preproc.zNormalization(DTR)
+
+            reducedData, _ = preproc.computePCA(DTR, dim)
+            kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
+            
+        llrsSVM = []
+        
+        Cs = np.logspace(-6, 4, 11)
+        
+        for c in range(len(Cs)):
+            
+            curC = Cs[c]
+            correctEvalLabels = []
+            llrsSVM.append([curC, []])
+            
+            for i in range(0, nFolds):
+                
+                trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)                
+                correctEvalLabels.append(evalLabels)
+                
+                if type == "linear":
+                    # training Linear SVM, without class rebalancing
+                    linSVMObj = LinearSVMClassifier(trainData=trainingData, trainLabels=trainingLabels)
+                    linAlpha, linW, linPrimal, linDual = linSVMObj.train(curC)
+                    linLogScores, linPreds = linSVMObj.predict(evalData, linW)
+                    
+                    llrsSVM[c][1].append(linLogScores)
+                
+                if type == "poli":
+                    # training Polynomial SVM without class rebalancing
+                    poliSVMObj = KernelSVMClassifier(trainData=trainingData, trainLabels=trainingLabels)
+                    poliKernel = polyKernelWrapper(1,2,0)
+                    poliAlpha, poliW, poliPrimal, poliDual = poliSVMObj.train(curC, kernel=poliKernel)
+                    poliLogScores, poliPreds = poliSVMObj.predict(evalData, poliW, kernel=poliKernel)
+
+                    llrsSVM[c][1].append(poliLogScores)
+
+                if type == "rbf":
+                    
+                    rbfSVMObj = KernelSVMClassifier(trainData=trainingData, trainLabels=trainingLabels)
+                    # TODO: specify correct gamma and sigma
+                    rbfKernel = RBFKernelWrapper(0.5, 0.5)
+                    rbfAlpha, rbfW, rbfPrimal, rbfDual = rbfSVMObj.train(curC, kernel=rbfKernel)
+                    rbfLogScores, rbfPreds = rbfSVMObj.predict(evalData, rbfW, kernel=rbfKernel)
+                    
+                    llrsSVM[c][1].append(rbfLogScores)
+                    
+                else:
+                    print("Wrong type of SVM")
+                    return None
+                
+        correctEvalLabels = np.hstack(correctEvalLabels)
+        for i in range(len(llrsSVM)):
+            
+            llrsSVM[i][1] = np.hstack(llrsSVM[i][1])
+            minDCFLinSVM = eval.computeMinDCF(llrsSVM[i][1], correctEvalLabels, prior, Cfn, Cfp)
+            minDCFarray.append([dim, llrsSVM[i][0], minDCFLinSVM])
+    
+    return minDCFarray

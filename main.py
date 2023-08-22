@@ -20,7 +20,8 @@ if __name__ == "__main__":
     Cfp = 10
     effPrior = (prior*Cfn)/(prior*Cfn + (1 - prior)*Cfp)
     priorProb = np.asarray([[effPrior], [1 - effPrior]])
-    
+    formattedPrior = "{:.2f}".format(effPrior)
+
     #kfold
     nFolds = 5
     
@@ -37,83 +38,10 @@ if __name__ == "__main__":
     if runInitAnalysis:
         runInitAnalysis(DTR, LTR)
     
-    if runSVM:
-        
-        minDCFarrayLinSVM = []
-        minDCFarrayPoliSVM = [] 
-        minDCFarrayRbfSVM = []
-        
-        # Linear SVM
-        for dim in range(11, 7, -1):
-            
-            # no pca
-            if(dim == 11):
-                if znorm:
-                    DTR, _, _ = preproc.zNormalization(DTR)
-                kdata, klabels = helpers.splitToKFold(DTR, LTR, K=nFolds)
-            else:
-                if znorm:
-                    DTR, _, _ = preproc.zNormalization(DTR)
-
-                reducedData, _ = preproc.computePCA(DTR, dim)
-                kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
-                
-            llrsLinSVM = []
-            
-            Cs = np.logspace(-6, 4, 11)
-            
-            for c in range(len(Cs)):
-                
-                curC = Cs[c]
-                correctEvalLabels = []
-                llrsLinSVM.append([curC, []])
-                
-                for i in range(0, nFolds):
-                    
-                    trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)                
-                    correctEvalLabels.append(evalLabels)
-
-                    # training Linear SVM, without class rebalancing
-                    linSVMObj = svm.LinearSVMClassifier(trainData=trainingData, trainLabels=trainingLabels)
-                    linAlpha, linW, linPrimal, linDual = linSVMObj.train(curC)
-                    linLogScores, linPreds = linSVMObj.predict(evalData, linW)
-                    
-                    llrsLinSVM[c][1].append(linLogScores)
-                    
-                    # TODO: move it to different kfold training loop
-                    # training Polynomial SVM without class rebalancing
-                    # poliSVMObj = svm.KernelSVMClassifier(trainData=trainingData, trainLabels=trainingLabels)
-                    # poliKernel = svm.polyKernelWrapper(1,2,0)
-                    # poliAlpha, poliW, poliPrimal, poliDual = poliSVMObj.train(curC, kernel=poliKernel)
-                    # poliLogScores, poliPreds = poliSVMObj.predict(evalData, poliW, kernel=poliKernel)
-
-                
-            correctEvalLabels = np.hstack(correctEvalLabels)
-            for i in range(len(llrsLinSVM)):
-                
-                llrsLinSVM[i][1] = np.hstack(llrsLinSVM[i][1])
-                minDCFLinSVM = eval.computeMinDCF(llrsLinSVM[i][1], correctEvalLabels, prior, Cfn, Cfp)
-                minDCFarrayLinSVM.append([dim, llrsLinSVM[i][0], minDCFLinSVM])
-        
-        
-        formattedPrior = "{:.2f}".format(effPrior)
-        if saveResults:
-
-            np.save(f"results/npy/minDCFLinSVM_prior{formattedPrior}_Znorm{znorm}", minDCFarrayLinSVM)
-            np.savetxt(f"results/txt/minDCFLinSVM_prior{formattedPrior}_Znorm{znorm}", minDCFarrayLinSVM)
-        
-        if showResults:
-            
-            LinSVMResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{False}.npy")
-            zLinSVMResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{True}.npy")
-            modelsToShow = [LinSVMResults, zLinSVMResults]
-            vis.plotLogRegDCFs(modelsToShow, ["Linear SVM", "Z-normed LinSVM"], f'Linear SVM minDCFs - effPrior: {formattedPrior}', "C", range(11, 7, -1))
-
-        print('trained')
-    
-    
     if runGenerative:
-        minDCFMVGarray, minDCFTiedGarray, minDCFNBarray, minDCFTiedNBArray = generativeModels.trainAllGenerativeClassifiers(11, 5, DTR, LTR, [prior, Cfn, Cfp], nFolds, znorm=False)
+        minDCFMVGarray, minDCFTiedGarray, minDCFNBarray, minDCFTiedNBArray = generativeModels.trainAllGenerativeClassifiers(
+            11, 5, DTR, LTR, [prior, Cfn, Cfp], nFolds, znorm=False
+        )
         
         if saveResults:
             helpers.saveResults("MVG", minDCFMVGarray, effPrior, znorm)
@@ -130,12 +58,12 @@ if __name__ == "__main__":
         minDCFarrayQLogReg = logReg.trainLogRegClassifiers(11, 7, DTR, LTR, [prior, Cfn, Cfp], nFolds, znorm, quadratic=True)
         
         if saveResults:
-            formattedPrior = "{:.2f}".format(effPrior)
 
-            helpers.saveMinDCF("LogReg", minDCFarrayLogReg, formattedPrior, znorm)
-            helpers.saveMinDCF("QLogReg", minDCFarrayQLogReg, formattedPrior, znorm)
+            helpers.saveMinDCF("LogReg", minDCFarrayLogReg, effPrior, znorm)
+            helpers.saveMinDCF("QLogReg", minDCFarrayQLogReg, effPrior, znorm)
             
         if showResults:
+
             logRegResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{False}.npy")
             zLogRegResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{True}.npy")
             modelsToShow = [logRegResults, zLogRegResults]
@@ -158,8 +86,22 @@ if __name__ == "__main__":
         
         if saveResults:
             
-            helpers.saveMinDCF("LogRegPCA8_lambda10e-5", minDCFarrayLogReg8, prior, zNorm=True)
-            helpers.saveMinDCF("LogRegPCA9_lambda10e-2", minDCFarrayLogReg9, prior, zNorm=False)
+            helpers.saveMinDCF("LogRegPCA8_lambda10e-5", minDCFarrayLogReg8, effPrior, zNorm=True)
+            helpers.saveMinDCF("LogRegPCA9_lambda10e-2", minDCFarrayLogReg9, effPrior, zNorm=False)
             
-            helpers.saveMinDCF("QLogRegPCA8_lambda10e-2", minDCFarrayLogRegQ8, prior, zNorm=False)
-            helpers.saveMinDCF("QLogRegPCA10_lambda10e-3", minDCFarrayLogRegQ10, prior, zNorm=True)
+            helpers.saveMinDCF("QLogRegPCA8_lambda10e-2", minDCFarrayLogRegQ8, effPrior, zNorm=False)
+            helpers.saveMinDCF("QLogRegPCA10_lambda10e-3", minDCFarrayLogRegQ10, effPrior, zNorm=True)
+
+    if runSVM:
+
+        minDCFarrayLinSVM = svm.trainLinSVMClassifiers(11, 7, DTR, LTR, [prior, Cfn, Cfp], nFolds, znorm, "linear")
+
+        if saveResults:
+            helpers.saveMinDCF("LinSVM", minDCFarrayLinSVM, effPrior, znorm)
+
+        if showResults:
+            
+            LinSVMResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{False}.npy")
+            zLinSVMResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{True}.npy")
+            modelsToShow = [LinSVMResults, zLinSVMResults]
+            vis.plotLogRegDCFs(modelsToShow, ["Linear SVM", "Z-normed LinSVM"], f'Linear SVM minDCFs - effPrior: {formattedPrior}', "C", range(11, 7, -1))
