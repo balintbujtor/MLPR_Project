@@ -105,3 +105,11 @@ def computeLDA(dataset: np.ndarray, labels : np.ndarray, m : int) -> np.ndarray:
 
     reducedData = np.dot(W.T, dataset)
     return reducedData
+
+
+def zNormalization(D, mean=None, standardDeviation=None):
+    if (mean is None and standardDeviation is None):
+        mean = D.mean(axis=1)
+        standardDeviation = D.std(axis=1)
+    ZD = (D-helpers.vcol(mean))/helpers.vcol(standardDeviation)
+    return ZD, mean, standardDeviation

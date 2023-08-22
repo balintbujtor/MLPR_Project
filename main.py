@@ -81,11 +81,11 @@ if __name__ == "__main__":
             # no pca
             if(dim == 11):
                 if znorm:
-                    DTR, _, _ = helpers.ZNormalization(DTR)
+                    DTR, _, _ = preproc.zNormalization(DTR)
                 kdata, klabels = helpers.splitToKFold(DTR, LTR, K=nFolds)
             else:
                 if znorm:
-                    DTR, _, _ = helpers.ZNormalization(DTR)
+                    DTR, _, _ = preproc.zNormalization(DTR)
 
                 reducedData, _ = preproc.computePCA(DTR, dim)
                 kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
@@ -157,11 +157,11 @@ if __name__ == "__main__":
             # no pca
             if(j == 11):
                 if znorm:
-                    DTR, _, _ = helpers.ZNormalization(DTR)
+                    DTR, _, _ = preproc.zNormalization(DTR)
                 kdata, klabels = helpers.splitToKFold(DTR, LTR, K=nFolds)
             else:
                 if znorm:
-                    DTR, _, _ = helpers.ZNormalization(DTR)
+                    DTR, _, _ = preproc.zNormalization(DTR)
 
                 reducedData, _ = preproc.computePCA(DTR, j)
                 kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
@@ -241,7 +241,7 @@ if __name__ == "__main__":
         kdata9, klabels9 = helpers.splitToKFold(reducedData9, LTR, K=nFolds)
 
         # model B
-        DTRZ, _, _ = helpers.ZNormalization(DTR)
+        DTRZ, _, _ = preproc.zNormalization(DTR)
         reducedData8, _ = preproc.computePCA(DTRZ, 8)
         kdata8, klabels8 = helpers.splitToKFold(reducedData8, LTR, K=nFolds)
         
@@ -301,14 +301,14 @@ if __name__ == "__main__":
             np.savetxt(f"results/txt/minDCFLogRegPCA9_lambda10e-2_prior{formattedPrior}_Znorm{False}", minDCFarrayLogReg9)
 
     # TODO: refactor this
-    trainBestQLogRegWDifferentPT = True
+    trainBestQLogRegWDifferentPT = False
     if trainBestQLogRegWDifferentPT:
         # model C
         reducedDataQ8, _ = preproc.computePCA(DTR, 8)
         kdataQ8, klabelsQ8 = helpers.splitToKFold(reducedDataQ8, LTR, K=nFolds)
 
         # model D
-        DTRZ, _, _ = helpers.ZNormalization(DTR)
+        DTRZ, _, _ = preproc.zNormalization(DTR)
         kdataQ10, klabelsQ10 = helpers.splitToKFold(DTRZ, LTR, K=nFolds)
         
         pTs = [0.05, 0.5, 0.9]
@@ -370,98 +370,12 @@ if __name__ == "__main__":
             
     runGenerative = False
     if runGenerative:
+        minDCFMVGarray, minDCFTiedGarray, minDCFNBarray, minDCFTiedNBArray = generativeModels.trainAllGenerativeClassifiers(11, 5, DTR, LTR, [prior, Cfn, Cfp], nFolds, znorm=False)
         
-        znorm = True
-        minDCFMVGarray = []
-        minDCFTiedGarray = []
-        minDCFNBarray = []
-        minDCFTiedNBArray = []
-
-        # to try out different pca directions
-        for j in range(11, 5, -1):
-            
-            if(j == 11):
-                # without PCA
-                if znorm:
-                    DTR, _, _ = helpers.ZNormalization(DTR)
-                kdata, klabels = helpers.splitToKFold(DTR, LTR, K=nFolds)
-            
-            else:
-                if znorm:
-                    DTR, _, _ = helpers.ZNormalization(DTR)
-                reducedData, _ = preproc.computePCA(DTR, j)
-                kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
-
-            sLogPostMVG = []
-            sLogPostTiedG = []
-            sLogPostNB = []
-            sLogPostTiedNB = []
-            
-            correctEvalLabels = []
-
-            for i in range(0, nFolds):
-                
-                trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)
-                
-                # same for all, do it only once
-                correctEvalLabels.append(evalLabels)
-                
-                # MVG with K-fold
-                _, sPostLogMVG = generativeModels.logMVG(trainingData, trainingLabels, evalData, 2, priorProb)
-                sLogPostMVG.append(sPostLogMVG)
-                
-                # tied G
-                _, sPostLogTiedG = generativeModels.logTiedMVG(trainingData, trainingLabels, evalData, 2, priorProb)
-                sLogPostTiedG.append(sPostLogTiedG)
-                
-                # naive
-                _, sPostLogNB = generativeModels.logNaiveBayes(trainingData, trainingLabels, evalData, 2, priorProb)
-                sLogPostNB.append(sPostLogNB)
-                    
-                #naivetied - tied model is expected to perform worse than the untied
-                _, sPostLogTiedNB = generativeModels.logTiedNaiveBayes(trainingData, trainingLabels, evalData, 2, priorProb)
-                sLogPostTiedNB.append(sPostLogTiedNB)
-            
-            correctEvalLabels = np.hstack(correctEvalLabels)
-
-            # eval of MVG
-            sLogPostMVG = np.hstack(sLogPostMVG)
-            llrMVG = np.log(sLogPostMVG[1] / sLogPostMVG[0])
-            minDCFMVG = eval.computeMinDCF(llrMVG, correctEvalLabels, prior, Cfn, Cfp)
-            minDCFMVGarray.append([int(j), minDCFMVG])
-            
-            # eval of tied MVG
-            sLogPostTiedG = np.hstack(sLogPostTiedG)
-            llrTiedG = np.log(sLogPostTiedG[1] / sLogPostTiedG[0])
-            minDCFTiedG = eval.computeMinDCF(llrTiedG, correctEvalLabels, prior, Cfn, Cfp)
-            minDCFTiedGarray.append([int(j), minDCFTiedG])
-            
-            # eval of NB
-            sLogPostNB = np.hstack(sLogPostNB)
-            llrNB = np.log(sLogPostNB[1] / sLogPostNB[0])
-            minDCFNB = eval.computeMinDCF(llrNB, correctEvalLabels, prior, Cfn, Cfp)
-            minDCFNBarray.append([int(j), minDCFNB])
-            
-            # eval of tied NB
-            sLogPostTiedNB = np.hstack(sLogPostTiedNB)
-            llrTiedNB = np.log(sLogPostTiedNB[1] / sLogPostTiedNB[0])
-            minDCFTiedNB = eval.computeMinDCF(llrTiedNB, correctEvalLabels, prior, Cfn, Cfp)
-            minDCFTiedNBArray.append([int(j), minDCFTiedNB])
-
         if saveResults:
-            formattedPrior = "{:.2f}".format(effPrior)
-            
-            np.save(f"results/npy/minDCFMVG_prior{formattedPrior}_Znorm{znorm}", minDCFMVGarray)
-            np.savetxt(f"results/txt/minDCFMVG_prior{formattedPrior}_Znorm{znorm}", minDCFMVGarray)
-
-            np.save(f"results/npy/minDCFTiedG_prior{formattedPrior}_Znorm{znorm}", minDCFTiedGarray)
-            np.savetxt(f"results/txt/minDCFTiedG_prior{formattedPrior}_Znorm{znorm}", minDCFTiedGarray)
-            
-            np.save(f"results/npy/minDCFNB_prior{formattedPrior}_Znorm{znorm}", minDCFNBarray)
-            np.savetxt(f"results/txt/minDCFNB_prior{formattedPrior}_Znorm{znorm}", minDCFNBarray)
-            
-            np.save(f"results/npy/minDCFTiedNB_prior{formattedPrior}_Znorm{znorm}", minDCFTiedNBArray)
-            np.savetxt(f"results/txt/minDCFTiedNB_prior{formattedPrior}_Znorm{znorm}", minDCFTiedNBArray)
-
+            helpers.saveResults("MVG", minDCFMVGarray, effPrior, znorm)
+            helpers.saveResults("TiedG", minDCFTiedGarray, effPrior, znorm)
+            helpers.saveResults("NB", minDCFNBarray, effPrior, znorm)
+            helpers.saveResults("TiedNB", minDCFTiedNBArray, effPrior, znorm)
 
         print("finished")

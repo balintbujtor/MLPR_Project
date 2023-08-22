@@ -82,9 +82,8 @@ def getCurrentKFoldSplit(splitdata : np.ndarray, splitlabels : np.ndarray, curFo
     return trainingData, trainingLabels, evalData, evalLabels
 
 
-def ZNormalization(D, mean=None, standardDeviation=None):
-    if (mean is None and standardDeviation is None):
-        mean = D.mean(axis=1)
-        standardDeviation = D.std(axis=1)
-    ZD = (D-vcol(mean))/vcol(standardDeviation)
-    return ZD, mean, standardDeviation
+def saveMinDCF(name: str, minDCFArray: np.ndarray, prior: float, zNorm: bool):
+        formattedPrior = "{:.2f}".format(prior)
+        
+        np.save(f"results/npy/minDCF{name}_prior{formattedPrior}_Znorm{zNorm}", minDCFArray)
+        np.savetxt(f"results/txt/minDCF{name}_prior{formattedPrior}_Znorm{zNorm}", minDCFArray)
