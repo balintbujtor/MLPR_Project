@@ -1,6 +1,9 @@
 import numpy as np
 import scipy.optimize as spoptim
 
+import helpers.helpers as helpers
+import preprocessing.preprocessing as preproc
+
 class logRegClassifier:
     """
     This class implements a BINARY Logistic Regression Classifier
@@ -142,3 +145,102 @@ def stackArray(array: np.ndarray) -> np.ndarray:
     column[n_f ** 2: n_f ** 2 + n_f, :] = array
     
     return column
+
+
+def trainLogRegClassifiers(startPCA: int, endPCA: int, DTR: np.ndarray, LTR: np.ndarray, workingPoint: list, nFolds: int, znorm: bool, quadratic: bool) -> np.ndarray:
+
+    prior, Cfn, Cfp = workingPoint
+    effPrior = (prior*Cfn)/(prior*Cfn + (1 - prior)*Cfp)
+    
+    minDCFarray = []
+    
+    for j in range(startPCA, endPCA, -1):
+        
+        # no pca
+        if(j == 11):
+            if znorm:
+                DTR, _, _ = preproc.zNormalization(DTR)
+            kdata, klabels = helpers.splitToKFold(DTR, LTR, K=nFolds)
+        else:
+            if znorm:
+                DTR, _, _ = preproc.zNormalization(DTR)
+
+            reducedData, _ = preproc.computePCA(DTR, j)
+            kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
+            
+        llrsLogReg = []
+        
+        lambdas = np.logspace(-6, 4, 11)
+        
+        for l in range(len(lambdas)):
+            curLambda = lambdas[l]
+            
+            correctEvalLabels = []
+            
+            llrsLogReg.append([curLambda, []])
+            
+            for i in range(0, nFolds):
+                
+                trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)                
+                correctEvalLabels.append(evalLabels)
+
+                
+                # training  Logistic Regression
+                if quadratic:
+                    trainingData, evalData = transformTrainAndTestToQuadratic(trainingData, evalData)
+                
+                qLogRegObj = logRegClassifier(DTR=trainingData, LTR=trainingLabels, l=curLambda, pi=effPrior)
+                qwtrain, qbtrain = qLogRegObj.trainBin()
+                qlogScores, _ = qLogRegObj.evaluateBin(DTE=evalData, w=qwtrain, b=qbtrain)
+                
+                llrsLogReg[l][1].append(qlogScores)
+
+            
+        correctEvalLabels = np.hstack(correctEvalLabels)
+        for i in range(len(llrsLogReg)):
+            
+            llrsLogReg[i][1] = np.hstack(llrsLogReg[i][1])
+            minDCFLogReg = eval.computeMinDCF(llrsLogReg[i][1], correctEvalLabels, prior, Cfn, Cfp)
+            minDCFarray.append([j, llrsLogReg[i][0], minDCFLogReg])
+            
+    return minDCFarray
+
+
+def trainBestLogRegClassifierWDiffPriorWeights(DTR: np.ndarray, LTR: np.ndarray, workingPoint: list, PCADir: int, l: float, znorm: bool, quadratic: bool, pTs: list, nFolds: int) -> np.ndarray:
+    
+    prior, Cfn, Cfp = workingPoint
+    minDCFarrayLogReg = []
+    llrsLogReg = []
+    
+    if znorm: 
+        DTR, _, _ = preproc.zNormalization(DTR)
+    reducedData, _ = preproc.computePCA(DTR, PCADir)
+    kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
+    
+    for pT in pTs:
+        
+        llrsLogReg.append([pT, []])
+        correctEvalLabels = []
+        
+        for i in range(0, nFolds):
+            
+            trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)
+            correctEvalLabels.append(evalLabels)
+            
+            # training Linear Logistic Regression candidate A
+            if quadratic:
+                trainingData, evalData = transformTrainAndTestToQuadratic(trainingData, evalData)
+            logRegObj9 = logRegClassifier(DTR=trainingData, LTR=trainingLabels, l=l, pi=pT)
+            wtrain9, btrain9 = logRegObj9.trainBin()
+            logScores9, _ = logRegObj9.evaluateBin(DTE=evalData, w=wtrain9, b=btrain9)
+            llrsLogReg[-1][1].append(logScores9)
+            
+    
+    correctEvalLabels = np.hstack(correctEvalLabels)
+    for i in range(len(llrsLogReg)):
+        
+        llrsLogReg[i][1] = np.hstack(llrsLogReg[i][1])
+        minDCFLogReg8 = eval.computeMinDCF(llrsLogReg[i][1], correctEvalLabels, prior, Cfn, Cfp)
+        minDCFarrayLogReg.append([llrsLogReg[i][0], minDCFLogReg8])
+
+    return minDCFarrayLogReg

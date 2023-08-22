@@ -1,6 +1,7 @@
 import scipy
 import numpy as np
 import helpers.helpers as helpers
+import visualization.visualization as vis
 
 def computePCA(trainData : np.ndarray, m : int) -> np.ndarray:
     """
@@ -113,3 +114,38 @@ def zNormalization(D, mean=None, standardDeviation=None):
         standardDeviation = D.std(axis=1)
     ZD = (D-helpers.vcol(mean))/helpers.vcol(standardDeviation)
     return ZD, mean, standardDeviation
+
+
+def initialAnalysis(DTR, LTR):
+    
+    class0 = DTR[:, LTR == 0]
+    class1 = DTR[:, LTR == 1]
+    for i in range(DTR.shape[0]):
+        class0attri = class0[i, :]
+        class1attri = class1[i, :]
+        vis.plotHistogram(class0attri, class1attri, f"HistogramDatasetFeature_{i}")
+        
+    PCAdirs, _ = computePCA(DTR, 2)
+    
+    pcaClass0 = PCAdirs[:, LTR == 0]
+    pcaClass1 = PCAdirs[:, LTR == 1]
+    for i in range(2):
+        pcaClass0attri = pcaClass0[i, :]
+        pcaClass1attri = pcaClass1[i, :]
+        vis.plotHistogram(pcaClass0attri, pcaClass1attri, f"HistogramPCAdir{i}")
+        
+    vis.plotScatter(pcaClass0, pcaClass1, "scatterPCAdirs")
+
+    LDAdir = computeLDA(DTR, LTR, 1)
+    ldaClass0 = LDAdir[:, LTR == 0]
+    ladClass1 = LDAdir[:, LTR == 1]
+    ldaClass0attr0 = ldaClass0[0, :]
+    ldaClass1attr0 = ladClass1[0, :] 
+    vis.plotHistogram(ldaClass0attr0, ldaClass1attr0, "LDA_direction")
+
+    cumRatios = computeCumVarRatios(DTR)
+    vis.plotCumVarRatios(cumRatios, DTR.shape[0] + 1)
+    
+    vis.plotCorrMat(DTR[:, LTR == 0], "PearsonCorrelationClass0")
+    vis.plotCorrMat(DTR[:, LTR == 1], "PearsonCorrelationClass1")
+    vis.plotCorrMat(DTR, "PearsonCorrelation")
