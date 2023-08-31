@@ -131,3 +131,38 @@ def plotLogRegDCFs(modelsToShow: list, modelNames: list, title: str, xparam: str
     plt.show()
     plt.clf()
 
+
+def plotDifGammaDCFs(modelsToShow: list, modelNames: list, title: str, xparam: str, PCAdims: int):
+    plt.figure()
+    plt.grid(True)
+    
+    displayedLegend = []
+    for m, model in enumerate(modelsToShow):
+        
+        for pcadim in PCAdims:
+            arr = []
+            for i in range(len(model)):
+                if model[i][0] == pcadim:
+                    arr.append([model[i][1], model[i][2]])
+            
+            # Extract x and y values for plotting
+            x_values = [point[0] for point in arr]
+            y_values = [point[1] for point in arr]
+
+            # Plot the data
+            plt.plot(x_values, y_values)
+            plt.xlim(min(x_values), max(x_values))
+            curDim = "RAW" if pcadim == 11 else pcadim
+            curLegend = f'{modelNames[m]} - {curDim}'
+            displayedLegend.append(curLegend)
+
+    plt.legend(displayedLegend)
+    
+    plt.xscale('log')
+    plt.xlabel(xparam)
+    plt.ylabel('minDCF')
+    plt.title(title)
+    
+    plt.savefig(f'results/img/{title}.png')
+    plt.show()
+    plt.clf()
