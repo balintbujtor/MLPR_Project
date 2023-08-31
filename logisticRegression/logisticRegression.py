@@ -3,6 +3,7 @@ import scipy.optimize as spoptim
 
 import helpers.helpers as helpers
 import preprocessing.preprocessing as preproc
+import evaluation.evaluation as eval
 
 class logRegClassifier:
     """
