@@ -2,12 +2,13 @@ import numpy as np
 import scipy.optimize as spoptim
 import helpers.helpers as helpers
 import preprocessing.preprocessing as preproc
+import evaluation.evaluation as eval
 
 def computeBalancedCArray(labels: np.ndarray, C: float, pT: float):
     
-    zeros = np.zeros(labels.shape[1])
-    CArray = zeros
-    empiricalPT = np.sum(labels == 1) / labels.shape[1]
+    zeros = np.zeros(labels.shape[0])
+    CArray = np.zeros(labels.shape[0])
+    empiricalPT = np.sum(labels == 1) / labels.shape[0]
     CArray[labels == 1] = C * pT / empiricalPT
     CArray[labels == 0] = C * (1 - pT) / (1 - empiricalPT)
     boxConstraints = np.asarray(list(zip(zeros, CArray)))
@@ -151,7 +152,7 @@ class KernelSVMClassifier:
         x0 = np.zeros(self.numSamples)   
         
         # dualLoss is neg bc we compute LHatD not JHatD!!
-        alphaStar, dualLoss, info = spoptim.fmin_l_bfgs_b(self.computeDualObjective, x0, bounds=boxConstraints, factr=1.0, maxfun=100000, maxiter=100000)
+        alphaStar, dualLoss, info = spoptim.fmin_l_bfgs_b(self.computeDualObjective, x0, bounds=boxConstraints, factr=1.0)
         
         return alphaStar, dualLoss
     
@@ -160,20 +161,20 @@ class KernelSVMClassifier:
         
         Z = helpers.vcol(2 * self.trainLabels - 1)
                 
-        score = np.sum(helpers.vcol(alphaStar) * Z * kernelFunc(self.trainData, testData) , axis=0)
-        predictions = score > threshold
+        scores = np.sum(helpers.vcol(alphaStar) * Z * kernelFunc(self.trainData, testData) , axis=0)
+        predictions = scores > threshold
     
-        return predictions
+        return scores, predictions
 
 
-def trainSVMClassifiers(startPCA: int, endPCA: int, DTR: np.ndarray, LTR: np.ndarray, workingPoint: list, nFolds: int, znorm: bool, type: str) -> np.ndarray:
+def trainSVMClassifiers(DTR: np.ndarray, LTR: np.ndarray, workingPoint: list, nFolds: int, pcaDirs: list, znorm: bool, Csparam: list = None, kernel = None) -> np.ndarray:
 
     prior, Cfn, Cfp = workingPoint
     effPrior = (prior*Cfn)/(prior*Cfn + (1 - prior)*Cfp)
     
     minDCFarray = []
     
-    for dim in range(startPCA, endPCA, -1):
+    for dim in pcaDirs:
         
         # no pca
         if(dim == 11):
@@ -189,8 +190,11 @@ def trainSVMClassifiers(startPCA: int, endPCA: int, DTR: np.ndarray, LTR: np.nda
             
         llrsSVM = []
         
-        Cs = np.logspace(-6, 4, 11)
-        
+        if Csparam == None:
+            Cs = np.logspace(-6, 4, 11)
+        else:
+            Cs = np.logspace(Csparam[0], Csparam[1], Csparam[2])
+            
         for c in range(len(Cs)):
             
             curC = Cs[c]
@@ -202,7 +206,7 @@ def trainSVMClassifiers(startPCA: int, endPCA: int, DTR: np.ndarray, LTR: np.nda
                 trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)                
                 correctEvalLabels.append(evalLabels)
                 
-                if type == "linear":
+                if kernel == None:
                     # training Linear SVM, without class rebalancing
                     linSVMObj = LinearSVMClassifier(trainData=trainingData, trainLabels=trainingLabels)
                     linAlpha, linW, linPrimal, linDual = linSVMObj.train(curC)
@@ -210,28 +214,18 @@ def trainSVMClassifiers(startPCA: int, endPCA: int, DTR: np.ndarray, LTR: np.nda
                     
                     llrsSVM[c][1].append(linLogScores)
                 
-                if type == "poli":
-                    # training Polynomial SVM without class rebalancing
-                    poliSVMObj = KernelSVMClassifier(trainData=trainingData, trainLabels=trainingLabels)
-                    poliKernel = polyKernelWrapper(1,2,0)
-                    poliAlpha, poliW, poliPrimal, poliDual = poliSVMObj.train(curC, kernel=poliKernel)
-                    poliLogScores, poliPreds = poliSVMObj.predict(evalData, poliW, kernel=poliKernel)
-
-                    llrsSVM[c][1].append(poliLogScores)
-
-                if type == "rbf":
-                    
-                    rbfSVMObj = KernelSVMClassifier(trainData=trainingData, trainLabels=trainingLabels)
-                    # TODO: specify correct gamma and sigma
-                    rbfKernel = RBFKernelWrapper(0.5, 0.5)
-                    rbfAlpha, rbfW, rbfPrimal, rbfDual = rbfSVMObj.train(curC, kernel=rbfKernel)
-                    rbfLogScores, rbfPreds = rbfSVMObj.predict(evalData, rbfW, kernel=rbfKernel)
-                    
-                    llrsSVM[c][1].append(rbfLogScores)
-                    
                 else:
-                    print("Wrong type of SVM")
-                    return None
+                    # training non-linear SVM without class rebalancing
+                    poliSVMObj = KernelSVMClassifier(trainData=trainingData, trainLabels=trainingLabels)
+                    
+    
+                    alphaStar, dualLoss = poliSVMObj.train(curC, kernelFunc=kernel)
+                    poliLogScores, poliPreds = poliSVMObj.predict(evalData, alphaStar, kernelFunc=kernel)
+
+                    #print("Incorrect kernel function for training SVM")
+                    #return None
+                    
+                    llrsSVM[c][1].append(poliLogScores)
                 
         correctEvalLabels = np.hstack(correctEvalLabels)
         for i in range(len(llrsSVM)):
@@ -240,4 +234,57 @@ def trainSVMClassifiers(startPCA: int, endPCA: int, DTR: np.ndarray, LTR: np.nda
             minDCFLinSVM = eval.computeMinDCF(llrsSVM[i][1], correctEvalLabels, prior, Cfn, Cfp)
             minDCFarray.append([dim, llrsSVM[i][0], minDCFLinSVM])
     
+    return minDCFarray
+
+
+def trainSingleSVMClassifierWPriorWeights(DTR: np.ndarray, LTR: np.ndarray, workingPoint: list, nFolds: int, PCADir: int, C: float, znorm: bool, pTs: list, kernel = None) -> np.ndarray:
+    
+    prior, Cfn, Cfp = workingPoint
+    minDCFarray = []
+    llrs = []
+    
+    if znorm: 
+        DTR, _, _ = preproc.zNormalization(DTR)
+    reducedData, _ = preproc.computePCA(DTR, PCADir)
+    kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
+    
+    for pT in pTs:
+        
+        llrs.append([pT, []])
+        correctEvalLabels = []
+        
+        for i in range(0, nFolds):
+            
+            trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)
+            correctEvalLabels.append(evalLabels)
+            
+            # training single SVM
+            if kernel == None:
+                # training Linear SVM, without class rebalancing
+                linSVMObj = LinearSVMClassifier(trainData=trainingData, trainLabels=trainingLabels)
+                linAlpha, linW, linPrimal, linDual = linSVMObj.train(C, pT=pT)
+                linLogScores, linPreds = linSVMObj.predict(evalData, linW)
+                
+                llrs[-1][1].append(linLogScores)
+            
+            else:
+                # training non-linear SVM without class rebalancing
+                poliSVMObj = KernelSVMClassifier(trainData=trainingData, trainLabels=trainingLabels)
+                
+
+                alphaStar, dualLoss = poliSVMObj.train(C, kernelFunc=kernel, pT=pT)
+                poliLogScores, poliPreds = poliSVMObj.predict(evalData, alphaStar, kernelFunc=kernel)
+
+                #print("Incorrect kernel function for training SVM")
+                #return None
+                
+                llrs[-1][1].append(poliLogScores)            
+    
+    correctEvalLabels = np.hstack(correctEvalLabels)
+    for i in range(len(llrs)):
+        
+        llrs[i][1] = np.hstack(llrs[i][1])
+        minDCF = eval.computeMinDCF(llrs[i][1], correctEvalLabels, prior, Cfn, Cfp)
+        minDCFarray.append([llrs[i][0], minDCF])
+
     return minDCFarray
