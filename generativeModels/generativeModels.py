@@ -1,5 +1,5 @@
 import numpy as np
-import scipy
+import scipy.special
 import preprocessing.preprocessing as preproc
 import generativeModels.generativeModels as generativeModels
 import evaluation.evaluation as eval
