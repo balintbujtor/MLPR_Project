@@ -166,3 +166,37 @@ def plotDifGammaDCFs(modelsToShow: list, modelNames: list, title: str, xparam: s
     plt.savefig(f'results/img/{title}.png')
     plt.show()
     plt.clf()
+
+
+
+
+def plotGMM_BarChart(data: np.ndarray, zNormData: np.ndarray, pcaDims: list, modelNames: list, title: str):
+    # Extract the second and third columns as x and y values
+    displayedLegend = []
+    
+    for pcaDim in pcaDims:
+        x_values = [float(row.split()[1]) for row in data if row.split()[0] == pcaDim]
+        y_values = [float(row.split()[2]) for row in data if row.split()[0] == pcaDim]
+        
+        zx_values = [float(row.split()[1]) for row in zNormData if row.split()[0] == pcaDim]
+        zy_values = [float(row.split()[2]) for row in zNormData if row.split()[0] == pcaDim]
+
+        plt.bar(x_values, y_values)
+        plt.bar(zx_values, zy_values)
+        plt.legend(modelNames)
+        
+        plt.xlim(min([x_values, zx_values]), max([x_values, zx_values]))
+        curDim = "RAW" if pcaDim == 11 else pcaDim
+        curLegend = f'{modelNames[0]} - {curDim}'
+        curLegend2 = f'{modelNames[1]} - {curDim}'
+        displayedLegend.append(curLegend)
+        displayedLegend.append(curLegend2)
+    
+    plt.grid(True)
+    plt.xlabel('Number of components')
+    plt.ylabel('minDCF')
+    plt.title(title)
+
+    plt.savefig(f'results/img/{title}.png')
+    plt.show()
+    plt.clf()
