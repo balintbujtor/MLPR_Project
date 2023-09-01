@@ -31,7 +31,7 @@ if __name__ == "__main__":
     runGenerative = False
     runLogReg = False
     runSVM = False
-    runGMM = False
+    runGMM = True
     
     if runInitAnalysis:
         runInitAnalysis(DTR, LTR)
@@ -60,17 +60,17 @@ if __name__ == "__main__":
             helpers.saveMinDCF("LogReg", minDCFarrayLogReg, effPrior, znorm)
             helpers.saveMinDCF("QLogReg", minDCFarrayQLogReg, effPrior, znorm)
             
-    if showResults:
+        if showResults:
 
-        logRegResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{False}.npy")
-        zLogRegResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{True}.npy")
-        modelsToShow = [logRegResults, zLogRegResults]
-        vis.plotLogRegDCFs(modelsToShow, ["LR", "z-LR"], f'Linear Logistic Regression minDCFs - effPrior: {formattedPrior}', "lambda", range(11, 7, -1))
+            logRegResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{False}.npy")
+            zLogRegResults = np.load(f"results/npy/minDCFLogReg_prior{formattedPrior}_Znorm{True}.npy")
+            modelsToShow = [logRegResults, zLogRegResults]
+            vis.plotLogRegDCFs(modelsToShow, ["LR", "z-LR"], f'Linear Logistic Regression minDCFs - effPrior: {formattedPrior}', "lambda", range(11, 7, -1))
 
-        qLogRegResults = np.load(f"results/npy/minDCFQLogReg_prior{formattedPrior}_Znorm{False}.npy")
-        zQLogRegResults = np.load(f"results/npy/minDCFQLogReg_prior{formattedPrior}_Znorm{True}.npy")
-        modelsToShow = [qLogRegResults, zQLogRegResults]
-        vis.plotLogRegDCFs(modelsToShow, ["Q-LR", "z-Q-LR"], f'Quadratic Logistic Regression minDCFs - effPrior: {formattedPrior}', "lambda", range(11, 7, -1))
+            qLogRegResults = np.load(f"results/npy/minDCFQLogReg_prior{formattedPrior}_Znorm{False}.npy")
+            zQLogRegResults = np.load(f"results/npy/minDCFQLogReg_prior{formattedPrior}_Znorm{True}.npy")
+            modelsToShow = [qLogRegResults, zQLogRegResults]
+            vis.plotLogRegDCFs(modelsToShow, ["Q-LR", "z-Q-LR"], f'Quadratic Logistic Regression minDCFs - effPrior: {formattedPrior}', "lambda", range(11, 7, -1))
 
     if runLogReg:
         
@@ -141,35 +141,35 @@ if __name__ == "__main__":
             helpers.saveMinDCF("PolySVMBest", minDCFPolySVMPTS, 0.5, True)
             helpers.saveMinDCF("RBFSVMBest", minDCFRBFSVMPTs, 0.5, True)
         
-    if showResults:
-        
-        LinSVMResults = np.load(f"results/npy/minDCFLinSVM_prior{formattedPrior}_Znorm{False}.npy")
-        zLinSVMResults = np.load(f"results/npy/minDCFLinSVM_prior{formattedPrior}_Znorm{True}.npy")
-        modelsToShow = [LinSVMResults, zLinSVMResults]
-        vis.plotLogRegDCFs(modelsToShow, ["Linear SVM", "Z-normed LinSVM"], f'Linear SVM minDCFs - effPrior: {formattedPrior}', "C", range(11, 7, -1))
-        
-        polySVMResults = np.load(f"results/npy/minDCFPolySVM_d2_prior0.09_Znorm{False}.npy")
-        zPolySVMResults = np.load(f"results/npy/minDCFPolySVM_d2_prior0.09_Znorm{True}.npy")
-        modelsToShow = [polySVMResults, zPolySVMResults]
-        vis.plotLogRegDCFs(modelsToShow, ["PolySVM", "Z-normed PolySVM"], f'Polynomial SVM minDCFs - effPrior: 0.09', "C", [11, 9, 8])
-        
-        polySVMResults = np.load(f"results/npy/minDCFPolySVM_d2_prior0.50_Znorm{False}.npy")
-        zPolySVMResults = np.load(f"results/npy/minDCFPolySVM_d2_prior0.50_Znorm{True}.npy")
-        modelsToShow = [polySVMResults, zPolySVMResults]
-        vis.plotLogRegDCFs(modelsToShow, ["PolySVM", "Z-normed PolySVM"], f'Polynomial SVM minDCFs - effPrior: 0.50', "C", [11, 9, 8])
+        if showResults:
+            
+            LinSVMResults = np.load(f"results/npy/minDCFLinSVM_prior{formattedPrior}_Znorm{False}.npy")
+            zLinSVMResults = np.load(f"results/npy/minDCFLinSVM_prior{formattedPrior}_Znorm{True}.npy")
+            modelsToShow = [LinSVMResults, zLinSVMResults]
+            vis.plotLogRegDCFs(modelsToShow, ["Linear SVM", "Z-normed LinSVM"], f'Linear SVM minDCFs - effPrior: {formattedPrior}', "C", range(11, 7, -1))
+            
+            polySVMResults = np.load(f"results/npy/minDCFPolySVM_d2_prior0.09_Znorm{False}.npy")
+            zPolySVMResults = np.load(f"results/npy/minDCFPolySVM_d2_prior0.09_Znorm{True}.npy")
+            modelsToShow = [polySVMResults, zPolySVMResults]
+            vis.plotLogRegDCFs(modelsToShow, ["PolySVM", "Z-normed PolySVM"], f'Polynomial SVM minDCFs - effPrior: 0.09', "C", [11, 9, 8])
+            
+            polySVMResults = np.load(f"results/npy/minDCFPolySVM_d2_prior0.50_Znorm{False}.npy")
+            zPolySVMResults = np.load(f"results/npy/minDCFPolySVM_d2_prior0.50_Znorm{True}.npy")
+            modelsToShow = [polySVMResults, zPolySVMResults]
+            vis.plotLogRegDCFs(modelsToShow, ["PolySVM", "Z-normed PolySVM"], f'Polynomial SVM minDCFs - effPrior: 0.50', "C", [11, 9, 8])
 
-        rbfSVMREsults3 = np.load("results/npy/minDCFRBFSVM_gamma1e-05_prior0.09_ZnormFalse.npy")
-        zrbfSVMREsults3 = np.load("results/npy/minDCFRBFSVM_gamma1e-05_prior0.09_ZnormTrue.npy")
-        rbfSVMREsults1 = np.load("results/npy/minDCFRBFSVM_gamma0.001_prior0.09_ZnormFalse.npy")
-        zrbfSVMREsults1 = np.load("results/npy/minDCFRBFSVM_gamma0.001_prior0.09_ZnormTrue.npy")
-        rbfSVMREsults2 = np.load("results/npy/minDCFRBFSVM_gamma0.1_prior0.09_ZnormFalse.npy")
-        zrbfSVMREsults2 = np.load("results/npy/minDCFRBFSVM_gamma0.1_prior0.09_ZnormTrue.npy")
-        modelsToShow = [rbfSVMREsults3, zrbfSVMREsults3, rbfSVMREsults1, zrbfSVMREsults1, rbfSVMREsults2, zrbfSVMREsults2]
-        vis.plotDifGammaDCFs(
-            modelsToShow, 
-            ["RBF SVM - gamma 1e-5", "Z-normed RBF SVM - gamma 1e-5", "RBF SVM - gamma 0.001", "Z-normed RBF SVM - gamma 0.001", "RBF SVM - gamma 0.1", "Z-normed RBF SVM - gamma 0.1"],
-            f'RBF SVM minDCFs - effPrior: 0.09, PCA: 8', "C", [8])
-        
+            rbfSVMREsults3 = np.load("results/npy/minDCFRBFSVM_gamma1e-05_prior0.09_ZnormFalse.npy")
+            zrbfSVMREsults3 = np.load("results/npy/minDCFRBFSVM_gamma1e-05_prior0.09_ZnormTrue.npy")
+            rbfSVMREsults1 = np.load("results/npy/minDCFRBFSVM_gamma0.001_prior0.09_ZnormFalse.npy")
+            zrbfSVMREsults1 = np.load("results/npy/minDCFRBFSVM_gamma0.001_prior0.09_ZnormTrue.npy")
+            rbfSVMREsults2 = np.load("results/npy/minDCFRBFSVM_gamma0.1_prior0.09_ZnormFalse.npy")
+            zrbfSVMREsults2 = np.load("results/npy/minDCFRBFSVM_gamma0.1_prior0.09_ZnormTrue.npy")
+            modelsToShow = [rbfSVMREsults3, zrbfSVMREsults3, rbfSVMREsults1, zrbfSVMREsults1, rbfSVMREsults2, zrbfSVMREsults2]
+            vis.plotDifGammaDCFs(
+                modelsToShow, 
+                ["RBF SVM - gamma 1e-5", "Z-normed RBF SVM - gamma 1e-5", "RBF SVM - gamma 0.001", "Z-normed RBF SVM - gamma 0.001", "RBF SVM - gamma 0.1", "Z-normed RBF SVM - gamma 0.1"],
+                f'RBF SVM minDCFs - effPrior: 0.09, PCA: 8', "C", [8])
+            
 
     if runGMM:
         
@@ -195,14 +195,14 @@ if __name__ == "__main__":
                 helpers.saveMinDCF("GMM", minDCFGMM, effPrior, False)
                 helpers.saveMinDCF("GMM", minDCFGMMZ, effPrior, True)
                 
-                helpers.saveMinDCF("TiedGMM", minDCFGMMTied, effPrior, False)
-                helpers.saveMinDCF("TiedGMM", minDCFGMMTiedZ, effPrior, True)
+                helpers.saveMinDCF("GMMTied", minDCFGMMTied, effPrior, False)
+                helpers.saveMinDCF("GMMTied", minDCFGMMTiedZ, effPrior, True)
                 
-                helpers.saveMinDCF("DiagGMM", minDCFGMMDiag, effPrior, False)
-                helpers.saveMinDCF("DiagGMM", minDCFGMMDiagZ, effPrior, True)
+                helpers.saveMinDCF("GMMDiag", minDCFGMMDiag, effPrior, False)
+                helpers.saveMinDCF("GMMDiag", minDCFGMMDiagZ, effPrior, True)
                 
-                helpers.saveMinDCF("TiedDiagGMM", minDCFGMMTiedDiag, effPrior, False)
-                helpers.saveMinDCF("TiedDiagGMM", minDCFGMMTiedDiagZ, effPrior, True)
+                helpers.saveMinDCF("GMMTiedDiag", minDCFGMMTiedDiag, effPrior, False)
+                helpers.saveMinDCF("GMMTiedDiag", minDCFGMMTiedDiagZ, effPrior, True)
         
     if showResults:
         gmmData = np.load("results/npy/minDCFGMM_prior0.09_ZnormFalse.npy")
