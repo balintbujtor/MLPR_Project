@@ -25,13 +25,13 @@ if __name__ == "__main__":
     znorm = False
     
     saveResults = True
-    showResults = False
+    showResults = True
     
     runInitAnalysis = False
     runGenerative = False
     runLogReg = False
     runSVM = False
-    runGMM = True
+    runGMM = False
     
     if runInitAnalysis:
         runInitAnalysis(DTR, LTR)
@@ -193,15 +193,19 @@ if __name__ == "__main__":
             effPrior = (prior2*Cfn2)/(prior2*Cfn2 + (1 - prior2)*Cfp2)
             if saveResults:
                 helpers.saveMinDCF("GMM", minDCFGMM, effPrior, False)
-                helpers.saveMinDCF("zGMM", minDCFGMMZ, effPrior, True)
+                helpers.saveMinDCF("GMM", minDCFGMMZ, effPrior, True)
                 
                 helpers.saveMinDCF("TiedGMM", minDCFGMMTied, effPrior, False)
-                helpers.saveMinDCF("zTiedGMM", minDCFGMMTiedZ, effPrior, True)
+                helpers.saveMinDCF("TiedGMM", minDCFGMMTiedZ, effPrior, True)
                 
                 helpers.saveMinDCF("DiagGMM", minDCFGMMDiag, effPrior, False)
-                helpers.saveMinDCF("zDiagGMM", minDCFGMMDiagZ, effPrior, True)
+                helpers.saveMinDCF("DiagGMM", minDCFGMMDiagZ, effPrior, True)
                 
                 helpers.saveMinDCF("TiedDiagGMM", minDCFGMMTiedDiag, effPrior, False)
-                helpers.saveMinDCF("zTiedDiagGMM", minDCFGMMTiedDiagZ, effPrior, True)
+                helpers.saveMinDCF("TiedDiagGMM", minDCFGMMTiedDiagZ, effPrior, True)
         
-        print("done")
+    if showResults:
+        gmmData = np.load("results/npy/minDCFGMM_prior0.09_ZnormFalse.npy")
+        zGmmData = np.load("results/npy/minDCFGMM_prior0.09_ZnormTrue.npy")
+        
+        vis.plotGMM_BarChart(gmmData, zGmmData, [11, 10, 9, 8], ["GMM", "z-GMM"], f'GMM minDCFs - effPrior: 0.09')

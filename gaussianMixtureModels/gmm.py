@@ -119,7 +119,7 @@ def splitGMM(GMMToSplit, alpha):
 
 def LBG_Algorithm(dataset: np.ndarray, gmmInit: list, its: int, alpha: float = 0.1, psi: float = 0.01, type : str = None):
     
-    print(f'Running LBG algorithm with {2**its} components and {type} covariance matrix')
+    print(f'Running LBG algorithm to split initial components into {2**its} and {type} covariance matrix')
     
     
     if len(gmmInit) == 1:
@@ -144,7 +144,7 @@ def LBG_Algorithm(dataset: np.ndarray, gmmInit: list, its: int, alpha: float = 0
         
     for i in range(its):
         
-        print('iteration #', i)
+        print('iteration #', i + 1)
         splittedGMM = splitGMM(startGMM, alpha)
         
         startGMM = EM_Algorithm(dataset, splittedGMM, psi=psi, type=type)   
