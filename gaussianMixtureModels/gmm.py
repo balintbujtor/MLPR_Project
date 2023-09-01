@@ -1,22 +1,19 @@
 import scipy.special
 import numpy as np
 import helpers.helpers as helpers
+import preprocessing.preprocessing as preproc
+import evaluation.evaluation as eval
 
-def logpdfGMM(X: np.ndarray, gmm: np.ndarray, computeJoint: bool = True):
+
+def computeDensScores(X: np.ndarray, gmm: np.ndarray):
     
     logDensScores = np.empty((len(gmm), X.shape[1]))
     
     for g in range(len(gmm)):
-        compLogDens = helpers.logpdf_GAU_ND(X, gmm[g][1], gmm[g][2])
-        logDensScores[g, :] = compLogDens
-        
-        if(computeJoint):
-            logDensScores[g, :] += np.log(gmm[g][0])
+        logDensScores[g, :] = helpers.logpdf_GAU_ND(X, gmm[g][1], gmm[g][2]) + np.log(gmm[g][0])
             
     return logDensScores
 
-def computelogMarginalGMM(logDensScores: np.ndarray):
-    return scipy.special.logsumexp(logDensScores, axis=0)
 
 def constrainEigenValues(covMat, psi):
     
@@ -27,53 +24,82 @@ def constrainEigenValues(covMat, psi):
     return newCovMat
 
 
-def EM_Algorithm(X: np.ndarray, gmm: list, threshold: float, psi: float = 0, diagonal: bool = False, tied: bool = False):
+def GMMDiagonal(myGmm: list):
+    for comp in range(len(myGmm)):
+        myGmm[comp][2] = myGmm[comp][2]*np.eye(myGmm[comp][2].shape[0])
+
+    return myGmm
+
+
+def GMMTied(myGmm: list, Zg: np.ndarray, X: np.ndarray):
+    tiedCov = np.sum([(Zg[g]*myGmm[g][2])for g in range(len(myGmm))],axis=0)/ X.shape[1]
     
-    myGmm = gmm
-    avgLL = 0
-    stoppingCriterion = 100
+    for comp in range(len(myGmm)):
+        myGmm[comp][2] = tiedCov                
+
+    return myGmm
+
+
+def EM_Algorithm(X: np.ndarray, gmmIn: list, threshold: float = 1e-6, psi: float = 0.01, type: str = None):
     
-    while(stoppingCriterion > threshold):
-        # Expectation step
-        logJointScores = logpdfGMM(X, myGmm)        
-        logMarginalDensities = computelogMarginalGMM(logJointScores)
-        logSPost = logJointScores - logMarginalDensities
-        # same as sPost
-        gamma = np.exp(logSPost)
+    myGmm = gmmIn
+    avgLL = None
+    newAvgLL = None
+    
+    
+    while(avgLL is None or np.abs(newAvgLL - avgLL) > threshold):
         
-        # Maximization step
-        Zg = helpers.vcol(np.sum(gamma, axis=1))
-        Fg = np.dot(gamma, X.T)
-        Sg = [np.dot(gamma[i]*X,X.T) for i in range(len(myGmm))]
-        
-        # compute the criterion that decides whether to stop
-        newAvgLL = sum(logMarginalDensities)/X.shape[1]
-        print(newAvgLL)
-        stoppingCriterion = np.abs(newAvgLL - avgLL)
         avgLL = newAvgLL
         
-        # obtain the new params
-        # shape: number of features * number of components
-        wNew = Zg / np.sum(Zg, axis=0)
-        muNew = Fg / Zg
-        covNew = [ Sg[i] / Zg[i] - np.dot(helpers.vcol(muNew[i]), helpers.vrow(muNew[i])) for i in range(len(myGmm))]
+        # Expectation step
+        logSJoint = np.zeros((len(myGmm), X.shape[1]))
+        for g in range(len(myGmm)):
+            logSJoint[g, :] = helpers.logpdf_GAU_ND(X, myGmm[g][1], myGmm[g][2]) + np.log(myGmm[g][0])
+        
+        logMarginal = scipy.special.logsumexp(logSJoint, axis=0)
+        
+        newAvgLL = sum(logMarginal)/X.shape[1]
+
+        logSPost = logSJoint - logMarginal
+        # same as sPost
+        sPost = np.exp(logSPost)
+        
+        myNewGmm = []
+        
+    
+        Zg=helpers.vcol(sPost.sum(axis=1))
+        Fg=np.dot(sPost,X.T)
+        Sg=[np.dot(sPost[i]*X,X.T) for i in range(len(myGmm))]
+        
+        #new GMM parameters
+        munext=Fg/Zg
+        Cnext=[Sg[i]/Zg[i]-np.dot(helpers.vcol(munext[i]),helpers.vrow(munext[i])) for i in range(len(myGmm))]
+        wnext=Zg/Zg.sum(axis=0)[0]
+        
+        for i in range (len(wnext)):
+            myNewGmm.append([wnext[i], helpers.vcol(munext[i]),Cnext[i]])        
         
         # if true then Diagonal GMMs (covariance mat) is used
-        # TODO: verify if works
-        if(diagonal):
-            covNew = [covNew[i]*np.eye(covNew[i].shape[0]) for i in range(len(myGmm))]
+        if type == 'diag':
+            myNewGmm = GMMDiagonal(myNewGmm)
             
         # if true, then tied model is used
-        # TODO: verify if works
-        if(tied):
-            tiedCov = np.sum([(Zg[g]*covNew[g])for g in range(len(myGmm))],axis=0)/ X.shape[1]
-            covNew = [tiedCov for i in range(len(myGmm))]
+        elif type == 'tied':
+            myNewGmm = GMMTied(myNewGmm, Zg, X)
+        
+        elif type == 'tiedDiag':
+            myNewGmm = GMMTied(myNewGmm, Zg, X)
+            myNewGmm = GMMDiagonal(myNewGmm)
             
-        covNew = [constrainEigenValues(covNew[i], psi) for i in range(len(myGmm))]
+        # constrain the eigenvalues
+        for i in range(len(myGmm)):
+            myNewGmm[i][2] = constrainEigenValues(myNewGmm[i][2], psi)
 
         #update the gmm params
-        myGmm = [(wNew[i], muNew[i], covNew[i]) for i in range(len(myGmm))]
+        myGmm = myNewGmm
         
+    print('final precision: ', np.abs(newAvgLL - avgLL))
+    
     return myGmm
 
 
@@ -91,22 +117,131 @@ def splitGMM(GMMToSplit, alpha):
     return newGMM
 
 
-def LBG_Algorithm(dataset: np.ndarray, its: int, alpha: float, threshold: float, psi : float = 0):
+def LBG_Algorithm(dataset: np.ndarray, gmmInit: list, its: int, alpha: float = 0.1, psi: float = 0.01, type : str = None):
     
-    print('Running LBG algorithm')
+    print(f'Running LBG algorithm with {2**its} components and {type} covariance matrix')
     
-    mu1, cov1 = helpers.ML_estimates(dataset)
-    cov1 = constrainEigenValues(cov1, psi)
     
-    GMMs = [(1.0, mu1, cov1)]
-    GMMi_EMs = []
-    GMMi_EMs.append(GMMs)
+    if len(gmmInit) == 1:
+        gmm = gmmInit
+        if type == 'diag':
+            gmm = GMMDiagonal(gmmInit)
+            
+        elif type == 'tied':
+            gmm = GMMTied(gmmInit, [dataset.shape[1]], dataset)
+            
+        elif type == 'tiedDiag':
+            gmm = GMMTied(gmmInit, [dataset.shape[1]], dataset)
+            gmm = GMMDiagonal(gmm)
+        
+        for i in range(len(gmm)):
+            gmm[i][2] = constrainEigenValues(gmm[i][2], psi)
+        
+        startGMM = EM_Algorithm(dataset, gmm, psi=psi, type=type)
     
+    else:
+        startGMM = gmmInit
+        
     for i in range(its):
         
         print('iteration #', i)
-        GMMs = splitGMM(GMMs, alpha)
-        GMMi_EM = EM_Algorithm(dataset, GMMs, threshold, psi)
-        GMMi_EMs.append(GMMi_EM)
+        splittedGMM = splitGMM(startGMM, alpha)
+        
+        startGMM = EM_Algorithm(dataset, splittedGMM, psi=psi, type=type)   
     
-    return GMMi_EMs
+    return startGMM    
+
+
+
+def computeGMM_LLR(evalSet: np.ndarray, gmm: list):
+    
+    llrs = []
+    
+    for i in range(2):
+        
+        score = []
+        classGMM = gmm[i]
+        
+        for j in range(len(classGMM)):
+            score.append(helpers.logpdf_GAU_ND(evalSet, classGMM[j][1], classGMM[j][2]) + np.log(classGMM[j][0]))
+        
+        score = np.vstack(score)
+        logDens = scipy.special.logsumexp(score, axis=0)
+        
+        llrs.append(logDens)
+    
+    llr = llrs[1] - llrs[0]
+    
+    return llr
+
+
+
+def trainAllGMMClassifiers(DTR: np.ndarray, LTR: np.ndarray, workingPoint: list, nFolds: int, pcaDirs: list, znorm: bool, its: int, type: str = None) -> np.ndarray:
+
+    prior, Cfn, Cfp = workingPoint
+    
+    minDCFarray = []
+    
+    for dim in pcaDirs:
+        
+        # no pca
+        if(dim == 11):
+            if znorm:
+                DTR, _, _ = preproc.zNormalization(DTR)
+            kdata, klabels = helpers.splitToKFold(DTR, LTR, K=nFolds)
+        else:
+            if znorm:
+                DTR, _, _ = preproc.zNormalization(DTR)
+
+            reducedData, _ = preproc.computePCA(DTR, dim)
+            kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
+            
+        llrs = []
+        
+        correctEvalLabels = []
+        
+        
+        for i in range(0, nFolds):
+            
+            llrFold = []
+            
+            trainingData, trainingLabels, evalData, evalLabels = helpers.getCurrentKFoldSplit(kdata, klabels, i, nFolds)                
+            correctEvalLabels.append(evalLabels)
+            
+            gmmFold = []
+            
+            # for each class
+            for classes in range(2):
+                
+                # first split to have 2 components for the class
+                mu, cov = helpers.ML_estimates(trainingData[:, trainingLabels==classes])
+                gmmFold.append(LBG_Algorithm(trainingData[:, trainingLabels == classes], [[1, mu, cov]], 1, type=type))
+
+                # then split its - 1 times to have 2**(its) components for the class
+                for j in range(1, its):
+                    gmmFold.append(LBG_Algorithm(trainingData[:, trainingLabels == classes], gmmFold[j-1], 1, type=type))
+            
+            # we have 2*2**(its) components in total (2 classes)
+            for g in range(len(gmmFold)//2):
+                gmmFoldPerComponent = []
+                gmmFoldPerComponent.append(gmmFold[g])
+                gmmFoldPerComponent.append(gmmFold[ len(gmmFold)//2 + g])
+                
+                llrGMMComp = computeGMM_LLR(evalData, gmmFoldPerComponent)
+                
+                llrFold.append(llrGMMComp)
+                
+            
+            llrs.append(llrFold)
+        
+        # join the llrs of each fold
+        llrsNP = np.array(llrs)
+        llrsNP = np.hstack(llrsNP)
+        correctEvalLabels = np.hstack(correctEvalLabels)
+
+        # compute the minDCF for each GMM with different components
+        for i in range(its):
+            minDCF = eval.computeMinDCF(llrsNP[i], correctEvalLabels, prior, Cfn, Cfp)
+            minDCFarray.append([dim, 2**(i + 1), minDCF])       
+        
+    return minDCFarray
