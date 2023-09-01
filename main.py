@@ -31,7 +31,7 @@ if __name__ == "__main__":
     runGenerative = False
     runLogReg = False
     runSVM = False
-    runGMM = True
+    runGMM = False
     
     if runInitAnalysis:
         runInitAnalysis(DTR, LTR)
@@ -207,5 +207,17 @@ if __name__ == "__main__":
     if showResults:
         gmmData = np.load("results/npy/minDCFGMM_prior0.09_ZnormFalse.npy")
         zGmmData = np.load("results/npy/minDCFGMM_prior0.09_ZnormTrue.npy")
+        vis.plotGMM_BarChart(gmmData, zGmmData, [11, 10, 9, 8], ["Raw GMM", "Z-normed GMM"], f'GMM minDCFs - effPrior: 0.09')
         
-        vis.plotGMM_BarChart(gmmData, zGmmData, [11, 10, 9, 8], ["GMM", "z-GMM"], f'GMM minDCFs - effPrior: 0.09')
+        gmmTiedData = np.load("results/npy/minDCFGMMTied_prior0.09_ZnormFalse.npy")
+        zGmmTiedData = np.load("results/npy/minDCFGMMTied_prior0.09_ZnormTrue.npy")
+        vis.plotGMM_BarChart(gmmTiedData, zGmmTiedData, [11, 10, 9, 8], ["Raw Tied GMM", "Z-normed Tied GMM"], f'Tied GMM minDCFs - effPrior: 0.09')
+        
+        gmmDiagData = np.load("results/npy/minDCFGMMDiag_prior0.09_ZnormFalse.npy")
+        zGmmDiagData = np.load("results/npy/minDCFGMMDiag_prior0.09_ZnormTrue.npy")
+        vis.plotGMM_BarChart(gmmDiagData, zGmmDiagData, [11, 10, 9, 8], ["Raw Diag GMM", "Z-normed Diag GMM"], f'Diag GMM minDCFs - effPrior: 0.09')
+        
+        gmmTiedDiagData = np.load("results/npy/minDCFGMMTiedDiag_prior0.09_ZnormFalse.npy")
+        zGmmTiedDiagData = np.load("results/npy/minDCFGMMTiedDiag_prior0.09_ZnormTrue.npy")
+        vis.plotGMM_BarChart(gmmTiedDiagData, zGmmTiedDiagData, [11, 10, 9, 8], ["Raw Tied Diag GMM", "Z-normed Tied Diag GMM"], f'Tied Diag GMM minDCFs - effPrior: 0.09')
+        

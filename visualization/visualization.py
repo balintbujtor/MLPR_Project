@@ -1,5 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+from matplotlib.patches import Patch
+
 from evaluation.evaluation import computeConfusionMatrix, computeDCF, computeMinDCF, computeNormalisedDCF
 
 def plotHistogram(data1, data2, title):
@@ -171,32 +174,69 @@ def plotDifGammaDCFs(modelsToShow: list, modelNames: list, title: str, xparam: s
 
 
 def plotGMM_BarChart(data: np.ndarray, zNormData: np.ndarray, pcaDims: list, modelNames: list, title: str):
-    # Extract the second and third columns as x and y values
-    displayedLegend = []
     
-    for pcaDim in pcaDims:
-        x_values = [float(row.split()[1]) for row in data if row.split()[0] == pcaDim]
-        y_values = [float(row.split()[2]) for row in data if row.split()[0] == pcaDim]
-        
-        zx_values = [float(row.split()[1]) for row in zNormData if row.split()[0] == pcaDim]
-        zy_values = [float(row.split()[2]) for row in zNormData if row.split()[0] == pcaDim]
+    # Setting the positions and width for the bars
+    num_col = len(data + zNormData) - 1
+    width = 0.95 / num_col
+    
+    cmap = cm.get_cmap('Blues_r', len(pcaDims))
+    cmap2 = cm.get_cmap('Reds_r', len(pcaDims))
+    
+    fig, ax = plt.subplots(figsize=(16,10))
 
-        plt.bar(x_values, y_values)
-        plt.bar(zx_values, zy_values)
-        plt.legend(modelNames)
+    compRange = np.unique([int(row[1]) for row in data])
+    
+    for  i, compNum in enumerate(compRange):
         
-        plt.xlim(min([x_values, zx_values]), max([x_values, zx_values]))
-        curDim = "RAW" if pcaDim == 11 else pcaDim
-        curLegend = f'{modelNames[0]} - {curDim}'
-        curLegend2 = f'{modelNames[1]} - {curDim}'
-        displayedLegend.append(curLegend)
-        displayedLegend.append(curLegend2)
+        color1 = iter(cmap(np.linspace(0.2, 0.5, len(pcaDims))))
+        color2 = iter(cmap2(np.linspace(0.2, 0.5, len(pcaDims))))
+        
+        for d, pcaDim in enumerate(pcaDims):
+            
+            c1 = next(color1)
+            c2 = next(color2)
+            
+            deltaP = width * d * 2
+            
+            y_values = [row[2] for row in data if row[0] == pcaDim and row[1] == compNum]
+            zy_values = [row[2] for row in zNormData if row[0] == pcaDim and row[1] == compNum]
+            
+            curDim = "No PCA" if pcaDim == 11 else f'PCA {pcaDim}'
+
+            # Calculate x positions for each group of bars
+            x_pos = 1*i + deltaP
+            x_pos2 = 1*i + deltaP + width
+            # Normalize colors to use only the middle half of the colormap
+
+
+            # Plot the bars for the first model
+            ax.bar(x_pos, y_values, width=width, color=c1)
+            ax.text(x_pos, y_values[0]+ 0.01, f'{curDim}', ha="center", va="bottom", rotation=90)
+            
+            # Plot the bars for the second model next to the first model's bars
+            ax.bar(x_pos2, zy_values, width=width, color=c2)
+            ax.text(x_pos2, zy_values[0] + 0.01, f'{curDim}', ha="center", va="bottom", rotation=90)
+    
+    ax.set_xticks([i + 3.5 * width for i in range(len(compRange))])
+    ax.set_xticklabels(compRange)
+    
+        # Create custom color patches for legends
+    legend_patches = [
+        Patch(color=cmap(0.35), label=modelNames[0]),
+        Patch(color=cmap2(0.35), label=modelNames[1])
+    ]
+
+    plt.legend(handles=legend_patches)  # Use custom color patches for legends
+    
     
     plt.grid(True)
     plt.xlabel('Number of components')
     plt.ylabel('minDCF')
     plt.title(title)
-
+    
+    max_height = max(max(zip(data[:, 2], zNormData[:, 2])))
+    plt.ylim(0, max_height * 1.15)  # Adjust the multiplier (1.2) as needed
+    
     plt.savefig(f'results/img/{title}.png')
     plt.show()
     plt.clf()
