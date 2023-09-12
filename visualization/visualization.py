@@ -72,7 +72,36 @@ def plotROCCurve(scores : np.ndarray, labels: np.ndarray):
     plt.show()
 
 
-def plotBayesError(effPriorLogOdds: np.ndarray, scores : np.ndarray, labels: np.ndarray):
+def computeDetPoints(llr, label: np.ndarray):
+    threshold = np.concatenate([np.array([-np.inf]), np.sort(llr), np.array([np.inf])])
+    FNRPoints = np.zeros(label.shape[0] + 2)
+    FPRPoints = np.zeros(label.shape[0] + 2)
+    for (idx, t) in enumerate(threshold):
+        pred = 1 * (llr > t)
+        FNR = 1 - (np.bitwise_and(pred == 1, label == 1).sum() / (label == 0).sum())
+        FPR = np.bitwise_and(pred == 1, label == 0).sum() / (label == 1).sum()
+        FNRPoints[idx] = FNR
+        FPRPoints[idx] = FPR
+    return FNRPoints, FPRPoints
+
+
+def plotDET(llr: list, labels: np.ndarray, plotNames: list, colors, file_name: str):
+
+    for (idx, scores) in enumerate(llr):
+        fpr, tpr = computeDetPoints(scores, labels)
+        plt.plot(fpr, tpr, color=colors[idx], label=plotNames[idx])
+
+    plt.xlabel("FPR")
+    plt.ylabel("FNR")
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.legend()
+    plt.grid()
+    plt.savefig("results/img/" + file_name)
+    plt.close()
+
+
+def computeBayesError(effPriorLogOdds: np.ndarray, scores : np.ndarray, labels: np.ndarray):
     
     normDCFs = []
     minDCFs = []
@@ -93,6 +122,41 @@ def plotBayesError(effPriorLogOdds: np.ndarray, scores : np.ndarray, labels: np.
         minDCFs.append(minDCF)
     
     return normDCFs, minDCFs
+
+
+def plotBayesError(scores: np.ndarray, labels: np.ndarray, title: str, calScores: np.ndarray = None, calLabels: np.ndarray = None):
+    effPriorLogOdds = np.linspace(-4, 4, 100)
+
+    actDCF, minDCF = computeBayesError(effPriorLogOdds, scores, labels)
+    
+    np.save(f"results/npy/calibration/{title}_actDCF", actDCF)
+    np.savetxt(f"results/txt/calibration/{title}_actDCF", actDCF)
+    np.save(f"results/npy/calibration/{title}_minDCF", minDCF)
+    np.savetxt(f"results/txt/calibration/{title}_minDCF", minDCF)
+    
+    if calScores is not None and calLabels is not None:
+        calActDCF, _ = computeBayesError(effPriorLogOdds, calScores, calLabels)
+        
+        np.save(f"results/npy/calibration/{title}_calActDCF", calActDCF)
+        np.savetxt(f"results/txt/calibration/{title}_calActDCF", calActDCF)
+        
+    plt.figure()
+    plt.plot(effPriorLogOdds, actDCF, label='DCF', color='r')
+    
+    if calScores is not None and calLabels is not None:
+        plt.plot(effPriorLogOdds, calActDCF, label='calibrated DCF', color='b')
+        
+    plt.plot(effPriorLogOdds, minDCF, label='min DCF', color='y', linestyle='--')
+    plt.ylim([0, 1.1])
+    plt.xlim([-4, 4])
+    plt.grid(True)
+    plt.xlabel('log odds')
+    plt.ylabel('DCFs')
+    plt.title(title)
+    plt.legend()
+    plt.show()    
+    plt.savefig(f'results/img/{title}.png')
+
 
 
 def plotLogRegDCFs(modelsToShow: list, modelNames: list, title: str, xparam: str, PCAdims: int):
