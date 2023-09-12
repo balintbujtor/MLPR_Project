@@ -226,4 +226,6 @@ if __name__ == "__main__":
             
     
     if runCalibration:
+        
         calFuse.calibrateAndPlotBestModels(DTR, LTR, [[prior, Cfn, Cfp]])
+        calFuse.fuseAndCalibrateGMMandOtherModelsFromResults()
