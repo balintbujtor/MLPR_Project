@@ -1,5 +1,5 @@
 import numpy as np
-import random
+import os
 
 def vcol(array):
     return array.reshape((array.shape[0], 1))
@@ -87,3 +87,20 @@ def saveMinDCF(name: str, minDCFArray: np.ndarray, prior: float, zNorm: bool):
         
         np.save(f"results/npy/minDCF{name}_prior{formattedPrior}_Znorm{zNorm}", minDCFArray)
         np.savetxt(f"results/txt/minDCF{name}_prior{formattedPrior}_Znorm{zNorm}", minDCFArray)
+
+
+def saveCalAndUncalScoresAndLabels(name: str, uncalScores: np.ndarray, uncalLabels: np.ndarray, calScores: np.ndarray, calLabels: np.ndarray):
+    if not os.path.exists('results/npy/calibration'):
+        os.makedirs('results/npy/calibration')
+    if not os.path.exists('results/txt/calibration'):
+        os.makedirs('results/txt/calibration')
+        
+    np.save(f"results/npy/calibration/{name}_uncalibratedScores", uncalScores)
+    np.savetxt(f"results/txt/calibration/{name}_uncalibratedScores", uncalScores)
+    np.save(f"results/npy/calibration/{name}_uncalibratedLabels", uncalLabels)
+    np.savetxt(f"results/txt/calibration/{name}_uncalibratedLabels", uncalLabels)
+    
+    np.save(f"results/npy/calibration/{name}_calibratedScores", calScores)
+    np.savetxt(f"results/txt/calibration/{name}_calibratedScores", calScores)
+    np.save(f"results/npy/calibration/{name}_calibratedLabels", calLabels)
+    np.savetxt(f"results/txt/calibration/{name}_calibratedLabels", calLabels)
