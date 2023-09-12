@@ -176,7 +176,7 @@ def computeGMM_LLR(evalSet: np.ndarray, gmm: list):
 
 
 
-def trainAllGMMClassifiers(DTR: np.ndarray, LTR: np.ndarray, workingPoint: list, nFolds: int, pcaDirs: list, znorm: bool, its: int, type: str = None) -> np.ndarray:
+def trainAllGMMClassifiers(DTR: np.ndarray, LTR: np.ndarray, workingPoint: list, nFolds: int, pcaDirs: list, znorm: bool, its: int, type: str = None, mode: str = None) -> np.ndarray:
 
     prior, Cfn, Cfp = workingPoint
     
@@ -236,6 +236,10 @@ def trainAllGMMClassifiers(DTR: np.ndarray, LTR: np.ndarray, workingPoint: list,
         
         # join the llrs of each fold
         llrsNP = np.array(llrs)
+        
+        if mode == 'calibration':
+            return llrsNP, correctEvalLabels
+        
         llrsNP = np.hstack(llrsNP)
         correctEvalLabels = np.hstack(correctEvalLabels)
 

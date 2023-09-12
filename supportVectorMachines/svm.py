@@ -237,11 +237,14 @@ def trainSVMClassifiers(DTR: np.ndarray, LTR: np.ndarray, workingPoint: list, nF
     return minDCFarray
 
 
-def trainSingleSVMClassifierWPriorWeights(DTR: np.ndarray, LTR: np.ndarray, workingPoint: list, nFolds: int, PCADir: int, C: float, znorm: bool, pTs: list, kernel = None) -> np.ndarray:
+def trainSingleSVMClassifier(DTR: np.ndarray, LTR: np.ndarray, workingPoint: list, nFolds: int, PCADir: int, C: float, znorm: bool, pTs: list, kernel = None, mode: str = None) -> np.ndarray:
     
     prior, Cfn, Cfp = workingPoint
     minDCFarray = []
     llrs = []
+    
+    if mode == 'calibration':
+        scores = []
     
     if znorm: 
         DTR, _, _ = preproc.zNormalization(DTR)
@@ -262,25 +265,40 @@ def trainSingleSVMClassifierWPriorWeights(DTR: np.ndarray, LTR: np.ndarray, work
             if kernel == None:
                 # training Linear SVM, without class rebalancing
                 linSVMObj = LinearSVMClassifier(trainData=trainingData, trainLabels=trainingLabels)
-                linAlpha, linW, linPrimal, linDual = linSVMObj.train(C, pT=pT)
+                if mode == 'calibration':
+                    # in case of calibration specific prior weight is not used because it never outperformed the default during the training phase
+                    linAlpha, linW, linPrimal, linDual = linSVMObj.train(C)
+                else:
+                    linAlpha, linW, linPrimal, linDual = linSVMObj.train(C, pT=pT)
+                    
                 linLogScores, linPreds = linSVMObj.predict(evalData, linW)
                 
                 llrs[-1][1].append(linLogScores)
+                
+                if mode == 'calibration':
+                    scores.append(linLogScores)
             
             else:
                 # training non-linear SVM without class rebalancing
                 poliSVMObj = KernelSVMClassifier(trainData=trainingData, trainLabels=trainingLabels)
                 
+                if mode == 'calibration':
+                    # in case of calibration specific prior weight is not used because it never outperformed the default during the training phase
+                    alphaStar, dualLoss = poliSVMObj.train(C, kernelFunc=kernel)
+                else:
+                    alphaStar, dualLoss = poliSVMObj.train(C, kernelFunc=kernel, pT=pT)
 
-                alphaStar, dualLoss = poliSVMObj.train(C, kernelFunc=kernel, pT=pT)
                 poliLogScores, poliPreds = poliSVMObj.predict(evalData, alphaStar, kernelFunc=kernel)
-
-                #print("Incorrect kernel function for training SVM")
-                #return None
+                llrs[-1][1].append(poliLogScores)     
                 
-                llrs[-1][1].append(poliLogScores)            
+                if mode == 'calibration':
+                    scores.append(poliLogScores)
+    
+    if mode == 'calibration':
+        return scores, correctEvalLabels
     
     correctEvalLabels = np.hstack(correctEvalLabels)
+    
     for i in range(len(llrs)):
         
         llrs[i][1] = np.hstack(llrs[i][1])

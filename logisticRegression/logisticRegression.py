@@ -207,15 +207,21 @@ def trainLogRegClassifiers(startPCA: int, endPCA: int, DTR: np.ndarray, LTR: np.
     return minDCFarray
 
 
-def trainBestLogRegClassifierWDiffPriorWeights(DTR: np.ndarray, LTR: np.ndarray, workingPoint: list, PCADir: int, l: float, znorm: bool, quadratic: bool, pTs: list, nFolds: int) -> np.ndarray:
+def trainSingleLogRegClassifier(DTR: np.ndarray, LTR: np.ndarray, workingPoint: list, PCADir: int, l: float, znorm: bool, quadratic: bool, pTs: list, nFolds: int, mode: str = None) -> np.ndarray:
     
     prior, Cfn, Cfp = workingPoint
     minDCFarrayLogReg = []
     llrsLogReg = []
     
+    if mode == 'calibration':
+        scores = []
+    
     if znorm: 
         DTR, _, _ = preproc.zNormalization(DTR)
-    reducedData, _ = preproc.computePCA(DTR, PCADir)
+    if PCADir == 11:
+        reducedData = DTR
+    else:
+        reducedData, _ = preproc.computePCA(DTR, PCADir)
     kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
     
     for pT in pTs:
@@ -231,11 +237,22 @@ def trainBestLogRegClassifierWDiffPriorWeights(DTR: np.ndarray, LTR: np.ndarray,
             # training Linear Logistic Regression candidate A
             if quadratic:
                 trainingData, evalData = transformTrainAndTestToQuadratic(trainingData, evalData)
-            logRegObj9 = logRegClassifier(DTR=trainingData, LTR=trainingLabels, l=l, pi=pT)
+            
+            if mode == 'calibration':
+                # in case of calibration specific prior weight is not used because it never outperformed the default during the training phase
+                logRegObj9 = logRegClassifier(DTR=trainingData, LTR=trainingLabels, l=l)
+            else:
+                logRegObj9 = logRegClassifier(DTR=trainingData, LTR=trainingLabels, l=l, pi=pT)
+            
             wtrain9, btrain9 = logRegObj9.trainBin()
             logScores9, _ = logRegObj9.evaluateBin(DTE=evalData, w=wtrain9, b=btrain9)
             llrsLogReg[-1][1].append(logScores9)
             
+            if mode == 'calibration':
+                scores.append(logScores9)
+            
+    if mode == 'calibration':
+        return scores, correctEvalLabels
     
     correctEvalLabels = np.hstack(correctEvalLabels)
     for i in range(len(llrsLogReg)):

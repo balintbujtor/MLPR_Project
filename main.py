@@ -6,6 +6,7 @@ import logisticRegression.logisticRegression as logReg
 import supportVectorMachines.svm as svm
 import visualization.visualization as vis
 import gaussianMixtureModels.gmm as gmm
+import calibrationFusion.calibrationFusion as calFuse
 
 if __name__ == "__main__":
 
@@ -25,13 +26,14 @@ if __name__ == "__main__":
     znorm = False
     
     saveResults = True
-    showResults = True
+    showResults = False
     
     runInitAnalysis = False
     runGenerative = False
     runLogReg = False
     runSVM = False
     runGMM = False
+    runCalibration = True
     
     if runInitAnalysis:
         runInitAnalysis(DTR, LTR)
@@ -78,11 +80,11 @@ if __name__ == "__main__":
         
         pTs = [0.05, 0.5, 0.9]
 
-        minDCFarrayLogReg8 = logReg.trainBestLogRegClassifierWDiffPriorWeights(DTR, LTR, [prior, Cfn, Cfp], PCADir=8, l=10e-5, znorm=True, quadratic=False, pTs=pTs, nFolds=nFolds)
-        minDCFarrayLogReg9 = logReg.trainBestLogRegClassifierWDiffPriorWeights(DTR, LTR, [prior, Cfn, Cfp], PCADir=9, l=10e-2, znorm=False, quadratic=False, pTs=pTs, nFolds=nFolds)
+        minDCFarrayLogReg8 = logReg.trainSingleLogRegClassifier(DTR, LTR, [prior, Cfn, Cfp], PCADir=8, l=10e-5, znorm=True, quadratic=False, pTs=pTs, nFolds=nFolds)
+        minDCFarrayLogReg9 = logReg.trainSingleLogRegClassifier(DTR, LTR, [prior, Cfn, Cfp], PCADir=9, l=10e-2, znorm=False, quadratic=False, pTs=pTs, nFolds=nFolds)
         
-        minDCFarrayLogRegQ8 = logReg.trainBestLogRegClassifierWDiffPriorWeights(DTR, LTR, [prior, Cfn, Cfp], PCADir=8, l=10e-2, znorm=False, quadratic=True, pTs=pTs, nFolds=nFolds)
-        minDCFarrayLogRegQ10 = logReg.trainBestLogRegClassifierWDiffPriorWeights(DTR, LTR, [prior, Cfn, Cfp], PCADir=11, l=10e-3, znorm=True, quadratic=True, pTs=pTs, nFolds=nFolds)
+        minDCFarrayLogRegQ8 = logReg.trainSingleLogRegClassifier(DTR, LTR, [prior, Cfn, Cfp], PCADir=8, l=10e-2, znorm=False, quadratic=True, pTs=pTs, nFolds=nFolds)
+        minDCFarrayLogRegQ10 = logReg.trainSingleLogRegClassifier(DTR, LTR, [prior, Cfn, Cfp], PCADir=11, l=10e-3, znorm=True, quadratic=True, pTs=pTs, nFolds=nFolds)
         
         if saveResults:
             
@@ -133,9 +135,9 @@ if __name__ == "__main__":
                 helpers.saveMinDCF(f"RBFSVM_gamma{gamma}", minDCFArrayRBFSVM4, 0.5, True)
 
         polyK = svm.polyKernelWrapper(1, 2, 0)
-        minDCFPolySVMPTS = svm.trainSingleSVMClassifierWPriorWeights(DTR, LTR, [prior, Cfn, 0.5], nFolds, 8, C=10e-2, znorm=True, pTs=[0.05, 0.5, 0.9], kernel=polyK)
+        minDCFPolySVMPTS = svm.trainSingleSVMClassifier(DTR, LTR, [prior, Cfn, 0.5], nFolds, 8, C=10e-2, znorm=True, pTs=[0.05, 0.5, 0.9], kernel=polyK)
         rbfK = svm.RBFKernelWrapper(0.001, 0)
-        minDCFRBFSVMPTs = svm.trainSingleSVMClassifierWPriorWeights(DTR, LTR, [prior, Cfn, 0.5], nFolds, 8, C=10, znorm=False, pTs=[0.05, 0.5, 0.9], kernel=rbfK)
+        minDCFRBFSVMPTs = svm.trainSingleSVMClassifier(DTR, LTR, [prior, Cfn, 0.5], nFolds, 8, C=10, znorm=False, pTs=[0.05, 0.5, 0.9], kernel=rbfK)
         
         if saveResults:
             helpers.saveMinDCF("PolySVMBest", minDCFPolySVMPTS, 0.5, True)
@@ -204,20 +206,24 @@ if __name__ == "__main__":
                 helpers.saveMinDCF("GMMTiedDiag", minDCFGMMTiedDiag, effPrior, False)
                 helpers.saveMinDCF("GMMTiedDiag", minDCFGMMTiedDiagZ, effPrior, True)
         
-    if showResults:
-        gmmData = np.load("results/npy/minDCFGMM_prior0.09_ZnormFalse.npy")
-        zGmmData = np.load("results/npy/minDCFGMM_prior0.09_ZnormTrue.npy")
-        vis.plotGMM_BarChart(gmmData, zGmmData, [11, 10, 9, 8], ["Raw GMM", "Z-normed GMM"], f'GMM minDCFs - effPrior: 0.09')
-        
-        gmmTiedData = np.load("results/npy/minDCFGMMTied_prior0.09_ZnormFalse.npy")
-        zGmmTiedData = np.load("results/npy/minDCFGMMTied_prior0.09_ZnormTrue.npy")
-        vis.plotGMM_BarChart(gmmTiedData, zGmmTiedData, [11, 10, 9, 8], ["Raw Tied GMM", "Z-normed Tied GMM"], f'Tied GMM minDCFs - effPrior: 0.09')
-        
-        gmmDiagData = np.load("results/npy/minDCFGMMDiag_prior0.09_ZnormFalse.npy")
-        zGmmDiagData = np.load("results/npy/minDCFGMMDiag_prior0.09_ZnormTrue.npy")
-        vis.plotGMM_BarChart(gmmDiagData, zGmmDiagData, [11, 10, 9, 8], ["Raw Diag GMM", "Z-normed Diag GMM"], f'Diag GMM minDCFs - effPrior: 0.09')
-        
-        gmmTiedDiagData = np.load("results/npy/minDCFGMMTiedDiag_prior0.09_ZnormFalse.npy")
-        zGmmTiedDiagData = np.load("results/npy/minDCFGMMTiedDiag_prior0.09_ZnormTrue.npy")
-        vis.plotGMM_BarChart(gmmTiedDiagData, zGmmTiedDiagData, [11, 10, 9, 8], ["Raw Tied Diag GMM", "Z-normed Tied Diag GMM"], f'Tied Diag GMM minDCFs - effPrior: 0.09')
-        
+        if showResults:
+            gmmData = np.load("results/npy/minDCFGMM_prior0.09_ZnormFalse.npy")
+            zGmmData = np.load("results/npy/minDCFGMM_prior0.09_ZnormTrue.npy")
+            vis.plotGMM_BarChart(gmmData, zGmmData, [11, 10, 9, 8], ["Raw GMM", "Z-normed GMM"], f'GMM minDCFs - effPrior: 0.09')
+            
+            gmmTiedData = np.load("results/npy/minDCFGMMTied_prior0.09_ZnormFalse.npy")
+            zGmmTiedData = np.load("results/npy/minDCFGMMTied_prior0.09_ZnormTrue.npy")
+            vis.plotGMM_BarChart(gmmTiedData, zGmmTiedData, [11, 10, 9, 8], ["Raw Tied GMM", "Z-normed Tied GMM"], f'Tied GMM minDCFs - effPrior: 0.09')
+            
+            gmmDiagData = np.load("results/npy/minDCFGMMDiag_prior0.09_ZnormFalse.npy")
+            zGmmDiagData = np.load("results/npy/minDCFGMMDiag_prior0.09_ZnormTrue.npy")
+            vis.plotGMM_BarChart(gmmDiagData, zGmmDiagData, [11, 10, 9, 8], ["Raw Diag GMM", "Z-normed Diag GMM"], f'Diag GMM minDCFs - effPrior: 0.09')
+            
+            gmmTiedDiagData = np.load("results/npy/minDCFGMMTiedDiag_prior0.09_ZnormFalse.npy")
+            zGmmTiedDiagData = np.load("results/npy/minDCFGMMTiedDiag_prior0.09_ZnormTrue.npy")
+            vis.plotGMM_BarChart(gmmTiedDiagData, zGmmTiedDiagData, [11, 10, 9, 8], ["Raw Tied Diag GMM", "Z-normed Tied Diag GMM"], f'Tied Diag GMM minDCFs - effPrior: 0.09')
+            
+            
+    
+    if runCalibration:
+        calFuse.calibrateAndPlotBestModels(DTR, LTR, [[prior, Cfn, Cfp], [prior, Cfn, 1]])
