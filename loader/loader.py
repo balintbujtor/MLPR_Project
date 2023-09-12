@@ -12,7 +12,7 @@ def loadData(filename : str, scramble : bool = False) -> tuple():
             returns two np arrays, one containing the samples of the data,
             the other the corresponding labels.
     """
-    
+    random.seed(0)
     data, labels = [], []
     
     lines = open(filename).readlines()
