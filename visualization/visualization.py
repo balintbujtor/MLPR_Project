@@ -105,6 +105,7 @@ def computeBayesError(effPriorLogOdds: np.ndarray, scores : np.ndarray, labels: 
     
     normDCFs = []
     minDCFs = []
+    piTildes = []
     for priorlog in effPriorLogOdds:
         
         piTilde = 1 / (1 + np.exp(-priorlog))
@@ -118,33 +119,34 @@ def computeBayesError(effPriorLogOdds: np.ndarray, scores : np.ndarray, labels: 
         normDCF = computeNormalisedDCF(DCF, piTilde, 1, 1)
         minDCF = computeMinDCF(scores, labels, piTilde, 1, 1)
         
+        piTildes.append(piTilde)
         normDCFs.append(normDCF)
         minDCFs.append(minDCF)
     
-    return normDCFs, minDCFs
+    return piTildes, normDCFs, minDCFs
 
 
 def plotBayesError(scores: np.ndarray, labels: np.ndarray, title: str, calScores: np.ndarray = None, calLabels: np.ndarray = None):
     effPriorLogOdds = np.linspace(-4, 4, 100)
 
-    actDCF, minDCF = computeBayesError(effPriorLogOdds, scores, labels)
+    piTildes, actDCF, minDCF = computeBayesError(effPriorLogOdds, scores, labels)
+    nonCalResults = np.array([piTildes, actDCF, minDCF]).T
     
-    np.save(f"results/npy/calibration/{title}_actDCF", actDCF)
-    np.savetxt(f"results/txt/calibration/{title}_actDCF", actDCF)
-    np.save(f"results/npy/calibration/{title}_minDCF", minDCF)
-    np.savetxt(f"results/txt/calibration/{title}_minDCF", minDCF)
+    np.save(f"results/npy/calibration/{title}_DCFS", nonCalResults)
+    np.savetxt(f"results/txt/calibration/{title}_DCFs", nonCalResults)
     
     if calScores is not None and calLabels is not None:
-        calActDCF, _ = computeBayesError(effPriorLogOdds, calScores, calLabels)
+        calPiTildes, calActDCFs, calMinDCFs = computeBayesError(effPriorLogOdds, calScores, calLabels)
+        calResults = np.array([calPiTildes, calActDCFs, calMinDCFs]).T
         
-        np.save(f"results/npy/calibration/{title}_calActDCF", calActDCF)
-        np.savetxt(f"results/txt/calibration/{title}_calActDCF", calActDCF)
+        np.save(f"results/npy/calibration/{title}_calDCFs", calResults)
+        np.savetxt(f"results/txt/calibration/{title}_calDCFs", calResults)
         
     plt.figure()
     plt.plot(effPriorLogOdds, actDCF, label='DCF', color='r')
     
     if calScores is not None and calLabels is not None:
-        plt.plot(effPriorLogOdds, calActDCF, label='calibrated DCF', color='b')
+        plt.plot(effPriorLogOdds, calActDCFs, label='calibrated DCF', color='b')
         
     plt.plot(effPriorLogOdds, minDCF, label='min DCF', color='y', linestyle='--')
     plt.ylim([0, 1.1])
