@@ -156,8 +156,8 @@ def plotBayesError(scores: np.ndarray, labels: np.ndarray, title: str, calScores
     plt.ylabel('DCFs')
     plt.title(title)
     plt.legend()
-    plt.show()    
     plt.savefig(f'results/img/{title}.png')
+    plt.show()    
 
 
 
