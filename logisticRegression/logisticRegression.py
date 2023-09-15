@@ -264,12 +264,15 @@ def trainSingleLogRegClassifier(DTR: np.ndarray, LTR: np.ndarray, workingPoint: 
     return minDCFarrayLogReg
 
 
-def trainSingleLogRegOnFullTrainData(DTR, LTR, DTE, lambdaa, prior: float = None):
+def trainSingleLogRegOnFullTrainData(DTR, LTR, DTE, lambdaa, znorm: bool = True, pcaDir: int = None, prior: float = None):
     
-    DTR, mean, stdDev = preproc.zNormalization(DTR)
+    if znorm:
+        DTR, mean, stdDev = preproc.zNormalization(DTR)
+        # we give the mean and standard deviation of the training data to the test data --> no knowledge of the data
+        DTE, _, _ = preproc.zNormalization(DTE, mean, stdDev)
     
-    # we give the mean and standard deviation of the training data to the test data --> no knowledge of the data
-    DTE, _, _ = preproc.zNormalization(DTE, mean, stdDev)
+    DTR, covTrain, _ = preproc.computePCA(DTR, pcaDir)
+    DTE, _, _ = preproc.computePCA(DTE, pcaDir, covTrain)
     
     # training Linear Logistic Regression candidate A
     trainingData, evalData = transformTrainAndTestToQuadratic(DTR, DTE)
