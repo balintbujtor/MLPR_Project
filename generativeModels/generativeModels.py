@@ -185,7 +185,7 @@ def trainAllGenerativeClassifiers(startPCA: int, endPCA: int, DTR: np.ndarray, L
         else:
             if znorm:
                 DTR, _, _ = preproc.zNormalization(DTR)
-            reducedData, _ = preproc.computePCA(DTR, j)
+            reducedData, _, _ = preproc.computePCA(DTR, j)
             kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
 
         sLogPostMVG = []

@@ -7,6 +7,7 @@ import supportVectorMachines.svm as svm
 import visualization.visualization as vis
 import gaussianMixtureModels.gmm as gmm
 import calibrationFusion.calibrationFusion as calFuse
+import testing.testing as testing
 
 if __name__ == "__main__":
 
@@ -33,7 +34,8 @@ if __name__ == "__main__":
     runLogReg = False
     runSVM = False
     runGMM = False
-    runCalibration = True
+    runCalibration = False
+    runEvaluation = True
     
     if runInitAnalysis:
         runInitAnalysis(DTR, LTR)
@@ -229,3 +231,20 @@ if __name__ == "__main__":
         
         calFuse.calibrateAndPlotBestModels(DTR, LTR, [[prior, Cfn, Cfp]])
         calFuse.fuseAndCalibrateGMMandOtherModelsFromResults()
+        
+    
+    # only load testdata here
+    DTE, LTE = loader.loadData('data/Test.txt')
+    
+    if runEvaluation:
+        
+        #testing.evaluate(DTR, LTR, DTE, LTE)
+        #testing.evaluateFusions()
+        gmmTestScores = np.load('results/npy/testing/gmmScoresTest_uncalibratedScores.npy')
+        svmTestScores = np.load('results/npy/testing/svmScoresTest_uncalibratedScores.npy')
+        logRegTestScores = np.load('results/npy/testing/logRegScoresTest_uncalibratedScores.npy')
+        gmmTestLabels = np.load('results/npy/testing/gmmScoresTest_uncalibratedLabels.npy')
+        svmTestLabels = np.load('results/npy/testing/svmScoresTest_uncalibratedLabels.npy')
+        logRegTestLabels = np.load('results/npy/testing/logRegScoresTest_uncalibratedLabels.npy')
+        vis.plotDET([gmmTestScores, logRegTestScores, svmTestScores], gmmTestLabels, ["GMM", "Q-LR", "poly-SVM"], ['r', 'b', 'g'], 'testing/best3DET')
+        #testing.calibrateScores()

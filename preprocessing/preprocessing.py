@@ -3,7 +3,7 @@ import numpy as np
 import helpers.helpers as helpers
 import visualization.visualization as vis
 
-def computePCA(trainData : np.ndarray, m : int) -> np.ndarray:
+def computePCA(trainData : np.ndarray, m : int, cIn: np.ndarray = None) -> np.ndarray:
     """
     Computes the first m Principal Components of the trainData dataset
     
@@ -17,14 +17,20 @@ def computePCA(trainData : np.ndarray, m : int) -> np.ndarray:
         np.ndarray: simplified dataset
     """
     # mu should be a 1D array, of the means of the attributes
-    mu = trainData.mean(1)
-
-    # center the data
-    centered_data = trainData - helpers.vcol(mu)
-
-    # compute 1/N * Dc * DcT
-    c = np.dot(centered_data, centered_data.T)/centered_data.shape[1]
-
+    
+    # in order not to leak test data to the parameters of training parameters c is only computed if not set as param
+    if m > trainData.shape[0]:
+        return trainData, None, None
+    
+    if cIn is None:
+        mu = trainData.mean(1)
+        # center the data
+        centered_data = trainData - helpers.vcol(mu)
+        # compute 1/N * Dc * DcT
+        c = np.dot(centered_data, centered_data.T)/centered_data.shape[1]
+    else:
+        c = cIn
+    
     # compute eigenvalues (s) and eigenvectors (U) from small(!!) to big
     s, U = np.linalg.eigh(c)
 
@@ -42,7 +48,7 @@ def computePCA(trainData : np.ndarray, m : int) -> np.ndarray:
     # Compute cumulative sum of explained variance ratios 
     cumulative_variance_ratio = np.cumsum(explained_variance_ratio) 
 
-    return data_points, cumulative_variance_ratio
+    return data_points, c, cumulative_variance_ratio
 
 
 def computeCumVarRatios(DTR):
@@ -52,7 +58,7 @@ def computeCumVarRatios(DTR):
     # Loop through different numbers of principal components 
     for m in range(0, DTR.shape[0] + 1): 
         # Compute PCA and get the cumulative variance ratio 
-        _, cumulative_variance_ratio = computePCA(DTR, m) 
+        _, _, cumulative_variance_ratio = computePCA(DTR, m) 
     
         #print(f"Number of Principal Components: {m}, Cumulative Variance Ratio: {cumulative_variance_ratio} ,") 
     
@@ -125,7 +131,7 @@ def initialAnalysis(DTR, LTR):
         class1attri = class1[i, :]
         vis.plotHistogram(class0attri, class1attri, f"HistogramDatasetFeature_{i}")
         
-    PCAdirs, _ = computePCA(DTR, 2)
+    PCAdirs, _, _ = computePCA(DTR, 2)
     
     pcaClass0 = PCAdirs[:, LTR == 0]
     pcaClass1 = PCAdirs[:, LTR == 1]

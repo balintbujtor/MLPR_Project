@@ -185,7 +185,7 @@ def trainSVMClassifiers(DTR: np.ndarray, LTR: np.ndarray, workingPoint: list, nF
             if znorm:
                 DTR, _, _ = preproc.zNormalization(DTR)
 
-            reducedData, _ = preproc.computePCA(DTR, dim)
+            reducedData, _, _ = preproc.computePCA(DTR, dim)
             kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
             
         llrsSVM = []
@@ -248,7 +248,7 @@ def trainSingleSVMClassifier(DTR: np.ndarray, LTR: np.ndarray, workingPoint: lis
     
     if znorm: 
         DTR, _, _ = preproc.zNormalization(DTR)
-    reducedData, _ = preproc.computePCA(DTR, PCADir)
+    reducedData, _, _ = preproc.computePCA(DTR, PCADir)
     kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
     
     for pT in pTs:
@@ -306,3 +306,25 @@ def trainSingleSVMClassifier(DTR: np.ndarray, LTR: np.ndarray, workingPoint: lis
         minDCFarray.append([llrs[i][0], minDCF])
 
     return minDCFarray
+
+
+def trainSingleKernelSVMOnFullTrainData(DTR, LTR, DTE, c, pcaDir: int = 8, prior: float = None):
+
+    DTR, mean, stdDev = preproc.zNormalization(DTR)
+    DTE, _, _ = preproc.zNormalization(DTE, mean, stdDev)
+    
+    reducedTrainData, covTrain, _ = preproc.computePCA(DTR, pcaDir)
+    reducedTestData, _, _ = preproc.computePCA(DTE, pcaDir, covTrain)
+    
+    polyKernel = polyKernelWrapper(1, 2, 0)
+    # training non-linear SVM without class rebalancing
+    poliSVMObj = KernelSVMClassifier(trainData=reducedTrainData, trainLabels=LTR)
+    
+    if prior == None:
+        alphaStar, dualLoss = poliSVMObj.train(c, kernelFunc=polyKernel)
+    else:
+        alphaStar, dualLoss = poliSVMObj.train(c, kernelFunc=polyKernel, pT=prior)
+    
+    poliLogScores, poliPreds = poliSVMObj.predict(reducedTestData, alphaStar, kernelFunc=polyKernel)
+
+    return poliLogScores

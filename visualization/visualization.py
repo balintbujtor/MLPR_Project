@@ -97,6 +97,7 @@ def plotDET(llr: list, labels: np.ndarray, plotNames: list, colors, file_name: s
     plt.yscale('log')
     plt.legend()
     plt.grid()
+    plt.title('DET plot')
     plt.savefig("results/img/" + file_name)
     plt.close()
 
@@ -126,21 +127,21 @@ def computeBayesError(effPriorLogOdds: np.ndarray, scores : np.ndarray, labels: 
     return piTildes, normDCFs, minDCFs
 
 
-def plotBayesError(scores: np.ndarray, labels: np.ndarray, title: str, calScores: np.ndarray = None, calLabels: np.ndarray = None):
+def plotBayesError(scores: np.ndarray, labels: np.ndarray, title: str, path: str, calScores: np.ndarray = None, calLabels: np.ndarray = None):
     effPriorLogOdds = np.linspace(-4, 4, 100)
 
     piTildes, actDCF, minDCF = computeBayesError(effPriorLogOdds, scores, labels)
     nonCalResults = np.array([piTildes, actDCF, minDCF]).T
     
-    np.save(f"results/npy/calibration/{title}_DCFS", nonCalResults)
-    np.savetxt(f"results/txt/calibration/{title}_DCFs", nonCalResults)
+    np.save(f"results/npy/{path}/{title}", nonCalResults)
+    np.savetxt(f"results/txt/{path}/{title}", nonCalResults)
     
     if calScores is not None and calLabels is not None:
         calPiTildes, calActDCFs, calMinDCFs = computeBayesError(effPriorLogOdds, calScores, calLabels)
         calResults = np.array([calPiTildes, calActDCFs, calMinDCFs]).T
         
-        np.save(f"results/npy/calibration/{title}_calDCFs", calResults)
-        np.savetxt(f"results/txt/calibration/{title}_calDCFs", calResults)
+        np.save(f"results/npy/{path}/calibrated_{title}", calResults)
+        np.savetxt(f"results/txt/{path}/calibrated_{title}", calResults)
         
     plt.figure()
     plt.plot(effPriorLogOdds, actDCF, label='DCF', color='r')

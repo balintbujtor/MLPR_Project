@@ -28,23 +28,23 @@ def calibrateAndPlotBestModels(DTR: np.ndarray, LTR: np.ndarray, workingPoints: 
         gmmScores = gmmScores[:, -1, :]
         gmmScores, gmmLabels = permuteFolds(gmmScores, gmmLabels)
         calibratedGMMScores, calibratedGMMLabels = trainSingleLogRegClassifier(DTR=np.array([gmmScores]), LTR=gmmLabels, workingPoint=wp, PCADir=11, l=0, znorm=False, quadratic=False, pTs=[None], nFolds=5, mode='calibration')
-        saveCalAndUncalScoresAndLabels(f'bestGMM', gmmScores, gmmLabels, np.hstack(calibratedGMMScores), np.hstack(calibratedGMMLabels))
-        vis.plotBayesError(gmmScores, gmmLabels, 'Calibrated and non-calibrated GMM', np.hstack(calibratedGMMScores), np.hstack(calibratedGMMLabels))
+        saveCalAndUncalScoresAndLabels(f'bestGMM', 'calibration', gmmScores, gmmLabels, np.hstack(calibratedGMMScores), np.hstack(calibratedGMMLabels))
+        vis.plotBayesError(gmmScores, gmmLabels, 'GMM Bayes Error Plot', "calibration", np.hstack(calibratedGMMScores), np.hstack(calibratedGMMLabels))
         
         # SVM
         polyK = polyKernelWrapper(1, 2, 0)
         svmScores, svmLabels = trainSingleSVMClassifier(DTR=DTR, LTR=LTR, workingPoint= wp, nFolds=5, PCADir=8, C=10e-2, znorm=True, pTs=[None], kernel=polyK, mode='calibration')
         svmScores, svmLabels = permuteFolds(svmScores, svmLabels)
         calibratedSVMScores, calibratedSVMLabels = trainSingleLogRegClassifier(DTR=np.array([svmScores]), LTR=svmLabels, workingPoint=wp, PCADir=11, l=0, znorm=False, quadratic=False, pTs=[None], nFolds=5, mode='calibration')
-        saveCalAndUncalScoresAndLabels(f'bestSVM', svmScores, svmLabels, np.hstack(calibratedSVMScores), np.hstack(calibratedSVMLabels))
-        vis.plotBayesError(svmScores, svmLabels, 'Calibrated and non-calibrated Poly-SVM', np.hstack(calibratedSVMScores), np.hstack(calibratedSVMLabels))
+        saveCalAndUncalScoresAndLabels(f'bestSVM', 'calibration', svmScores, svmLabels, np.hstack(calibratedSVMScores), np.hstack(calibratedSVMLabels))
+        vis.plotBayesError(svmScores, svmLabels, 'Poly-SVM Bayes Error Plot', "calibration", np.hstack(calibratedSVMScores), np.hstack(calibratedSVMLabels))
         
         # logisctic regression
         logRegScores, logRegLabels = trainSingleLogRegClassifier(DTR=DTR, LTR=LTR, workingPoint=wp, PCADir=11, l=10e-3, znorm=True, quadratic=True, pTs=[None], nFolds=5, mode='calibration')
         logRegScores, logRegLabels = permuteFolds(logRegScores, logRegLabels)
         calibratedLogRegScores, calibratedLabels = trainSingleLogRegClassifier(DTR=np.array([logRegScores]), LTR=logRegLabels, workingPoint=wp, PCADir=11, l=0, znorm=False, quadratic=False, pTs=[None], nFolds=5, mode='calibration')
-        saveCalAndUncalScoresAndLabels(f'bestLogReg', logRegScores, logRegLabels, np.hstack(calibratedLogRegScores), np.hstack(calibratedLabels))
-        vis.plotBayesError(logRegScores, logRegLabels, 'Calibrated and non-calibrated Logistic Regression', np.hstack(calibratedLogRegScores), np.hstack(calibratedLabels))
+        saveCalAndUncalScoresAndLabels(f'bestLogReg', 'calibration', logRegScores, logRegLabels, np.hstack(calibratedLogRegScores), np.hstack(calibratedLabels))
+        vis.plotBayesError(logRegScores, logRegLabels, 'Logistic Regression Bayes Error Plot', "calibration", np.hstack(calibratedLogRegScores), np.hstack(calibratedLabels))
 
 
 def fuseAndCalibrateGMMandOtherModelsFromResults():
@@ -65,8 +65,8 @@ def fuseAndCalibrateGMMandOtherModelsFromResults():
     # calibrated scores
     GMMSVMFusedScores, GMMSVMFusedLabels = permuteFolds(GMMSVMFusedScores, GMMSVMFusedLabels)
     calibratedGMMSVMFusedScores, calibratedGMMSVMFusedLabels = trainSingleLogRegClassifier(DTR=np.array([GMMSVMFusedScores]), LTR=GMMSVMFusedLabels, workingPoint=[0.5, 1, 10], PCADir=11, l=0, znorm=False, quadratic=False, pTs=[None], nFolds=5, mode='calibration')
-    saveCalAndUncalScoresAndLabels(f'GMMSVMFused', GMMSVMFusedScores, GMMSVMFusedLabels, np.hstack(calibratedGMMSVMFusedScores), np.hstack(calibratedGMMSVMFusedLabels))
-    vis.plotBayesError(GMMSVMFusedScores, GMMSVMFusedLabels, 'Calibrated and non-calibrated GMM SVM Fusion model', np.hstack(calibratedGMMSVMFusedScores), np.hstack(calibratedGMMSVMFusedLabels))
+    saveCalAndUncalScoresAndLabels(f'GMMSVMFused', 'calibration', GMMSVMFusedScores, GMMSVMFusedLabels, np.hstack(calibratedGMMSVMFusedScores), np.hstack(calibratedGMMSVMFusedLabels))
+    vis.plotBayesError(GMMSVMFusedScores, GMMSVMFusedLabels, 'GMM SVM Fusion model Bayes Error Plot', "calibration", np.hstack(calibratedGMMSVMFusedScores), np.hstack(calibratedGMMSVMFusedLabels))
     
     
     # GMM LogReg fusion
@@ -79,5 +79,5 @@ def fuseAndCalibrateGMMandOtherModelsFromResults():
     # calibrated scores
     GMMLogRegFusedScores, GMMLogRegFusedLabels = permuteFolds(GMMLogRegFusedScores, GMMLogRegFusedLabels)
     calibratedGMMLogRegFusedScores, calibratedGMMLogRegFusedLabels = trainSingleLogRegClassifier(DTR=np.array([GMMLogRegFusedScores]), LTR=GMMLogRegFusedLabels, workingPoint=[0.5, 1, 10], PCADir=11, l=0, znorm=False, quadratic=False, pTs=[None], nFolds=5, mode='calibration')
-    saveCalAndUncalScoresAndLabels(f'GMMLogRegFused', GMMLogRegFusedScores, GMMLogRegFusedLabels, np.hstack(calibratedGMMLogRegFusedScores), np.hstack(calibratedGMMLogRegFusedLabels))
-    vis.plotBayesError(GMMLogRegFusedScores, GMMLogRegFusedLabels, 'Calibrated and non-calibrated GMM LogReg Fusion model', np.hstack(calibratedGMMLogRegFusedScores), np.hstack(calibratedGMMLogRegFusedLabels))
+    saveCalAndUncalScoresAndLabels(f'GMMLogRegFused', 'calibration', GMMLogRegFusedScores, GMMLogRegFusedLabels, np.hstack(calibratedGMMLogRegFusedScores), np.hstack(calibratedGMMLogRegFusedLabels))
+    vis.plotBayesError(GMMLogRegFusedScores, GMMLogRegFusedLabels, 'GMM LogReg Fusion model Bayes Error Plot', "calibration", np.hstack(calibratedGMMLogRegFusedScores), np.hstack(calibratedGMMLogRegFusedLabels))

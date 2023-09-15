@@ -89,18 +89,20 @@ def saveMinDCF(name: str, minDCFArray: np.ndarray, prior: float, zNorm: bool):
         np.savetxt(f"results/txt/minDCF{name}_prior{formattedPrior}_Znorm{zNorm}", minDCFArray)
 
 
-def saveCalAndUncalScoresAndLabels(name: str, uncalScores: np.ndarray, uncalLabels: np.ndarray, calScores: np.ndarray, calLabels: np.ndarray):
-    if not os.path.exists('results/npy/calibration'):
-        os.makedirs('results/npy/calibration')
-    if not os.path.exists('results/txt/calibration'):
-        os.makedirs('results/txt/calibration')
-        
-    np.save(f"results/npy/calibration/{name}_uncalibratedScores", uncalScores)
-    np.savetxt(f"results/txt/calibration/{name}_uncalibratedScores", uncalScores)
-    np.save(f"results/npy/calibration/{name}_uncalibratedLabels", uncalLabels)
-    np.savetxt(f"results/txt/calibration/{name}_uncalibratedLabels", uncalLabels)
+def saveCalAndUncalScoresAndLabels(name: str, path, uncalScores: np.ndarray = None, uncalLabels: np.ndarray = None, calScores: np.ndarray = None, calLabels: np.ndarray =  None):
+    if not os.path.exists(f'results/npy/{path}'):
+        os.makedirs(f'results/npy/{path}')
+    if not os.path.exists(f'results/txt/{path}'):
+        os.makedirs(f'results/txt/{path}')
     
-    np.save(f"results/npy/calibration/{name}_calibratedScores", calScores)
-    np.savetxt(f"results/txt/calibration/{name}_calibratedScores", calScores)
-    np.save(f"results/npy/calibration/{name}_calibratedLabels", calLabels)
-    np.savetxt(f"results/txt/calibration/{name}_calibratedLabels", calLabels)
+    if uncalScores is not None and uncalLabels is not None:
+        np.save(f"results/npy/{path}/{name}_uncalibratedScores", uncalScores)
+        np.savetxt(f"results/txt/{path}/{name}_uncalibratedScores", uncalScores)
+        np.save(f"results/npy/{path}/{name}_uncalibratedLabels", uncalLabels)
+        np.savetxt(f"results/txt/{path}/{name}_uncalibratedLabels", uncalLabels)
+    
+    if calScores is not None and calLabels is not None:
+        np.save(f"results/npy/{path}/{name}_calibratedScores", calScores)
+        np.savetxt(f"results/txt/{path}/{name}_calibratedScores", calScores)
+        np.save(f"results/npy/{path}/{name}_calibratedLabels", calLabels)
+        np.savetxt(f"results/txt/{path}/{name}_calibratedLabels", calLabels)

@@ -166,7 +166,7 @@ def trainLogRegClassifiers(startPCA: int, endPCA: int, DTR: np.ndarray, LTR: np.
             if znorm:
                 DTR, _, _ = preproc.zNormalization(DTR)
 
-            reducedData, _ = preproc.computePCA(DTR, j)
+            reducedData, _, _ = preproc.computePCA(DTR, j)
             kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
             
         llrsLogReg = []
@@ -221,7 +221,7 @@ def trainSingleLogRegClassifier(DTR: np.ndarray, LTR: np.ndarray, workingPoint: 
     if PCADir == 11:
         reducedData = DTR
     else:
-        reducedData, _ = preproc.computePCA(DTR, PCADir)
+        reducedData, _, _ = preproc.computePCA(DTR, PCADir)
     kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
     
     for pT in pTs:
@@ -262,3 +262,24 @@ def trainSingleLogRegClassifier(DTR: np.ndarray, LTR: np.ndarray, workingPoint: 
         minDCFarrayLogReg.append([llrsLogReg[i][0], minDCFLogReg8])
 
     return minDCFarrayLogReg
+
+
+def trainSingleLogRegOnFullTrainData(DTR, LTR, DTE, lambdaa, prior: float = None):
+    
+    DTR, mean, stdDev = preproc.zNormalization(DTR)
+    
+    # we give the mean and standard deviation of the training data to the test data --> no knowledge of the data
+    DTE, _, _ = preproc.zNormalization(DTE, mean, stdDev)
+    
+    # training Linear Logistic Regression candidate A
+    trainingData, evalData = transformTrainAndTestToQuadratic(DTR, DTE)
+    
+    if prior == None:
+        logRegObj = logRegClassifier(DTR=trainingData, LTR=LTR, l=lambdaa)
+    else:
+        logRegObj = logRegClassifier(DTR=trainingData, LTR=LTR, l=lambdaa, pi=prior)
+
+    wtrain, btrain = logRegObj.trainBin()
+    logScores, _ = logRegObj.evaluateBin(DTE=evalData, w=wtrain, b=btrain)
+            
+    return logScores

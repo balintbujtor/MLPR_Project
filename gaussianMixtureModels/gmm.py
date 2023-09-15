@@ -178,6 +178,7 @@ def computeGMM_LLR(evalSet: np.ndarray, gmm: list):
 
 def trainAllGMMClassifiers(DTR: np.ndarray, LTR: np.ndarray, workingPoint: list, nFolds: int, pcaDirs: list, znorm: bool, its: int, type: str = None, mode: str = None) -> np.ndarray:
 
+    # only one classifier with modifiable parameters
     prior, Cfn, Cfp = workingPoint
     
     minDCFarray = []
@@ -193,7 +194,7 @@ def trainAllGMMClassifiers(DTR: np.ndarray, LTR: np.ndarray, workingPoint: list,
             if znorm:
                 DTR, _, _ = preproc.zNormalization(DTR)
 
-            reducedData, _ = preproc.computePCA(DTR, dim)
+            reducedData, _, _ = preproc.computePCA(DTR, dim)
             kdata, klabels = helpers.splitToKFold(reducedData, LTR, K=nFolds)
             
         llrs = []
@@ -249,3 +250,40 @@ def trainAllGMMClassifiers(DTR: np.ndarray, LTR: np.ndarray, workingPoint: list,
             minDCFarray.append([dim, 2**(i + 1), minDCF])       
         
     return minDCFarray
+
+
+def trainBestGMMClassifierOnFullTrainData(DTR: np.ndarray, LTR: np.ndarray, DTE: np.ndarray, pcaDir: int, znorm: bool, its: int, type: str = None) -> np.ndarray:
+
+    # only one classifier with modifiable parameters
+    if znorm:
+        DTR, meanTrain, stdDevTrain = preproc.zNormalization(DTR)
+        DTE, _, _ = preproc.zNormalization(DTE, meanTrain, stdDevTrain)
+    
+    reducedTrainingData, covTrain, _ = preproc.computePCA(DTR, pcaDir)
+    reducedTestData, _, _ = preproc.computePCA(DTE, pcaDir, covTrain)
+
+    gmms = []
+    llrs = []
+    # for each class
+    for classes in range(2):
+        
+        # first split to have 2 components for the class
+        mu, cov = helpers.ML_estimates(reducedTrainingData[:, LTR==classes])
+        gmms.append(LBG_Algorithm(reducedTrainingData[:, LTR == classes], [[1, mu, cov]], 1, type=type))
+
+        # then split its - 1 times to have 2**(its) components for the class
+        for j in range(1, its):
+            gmms.append(LBG_Algorithm(reducedTrainingData[:, LTR == classes], gmms[j-1], 1, type=type))
+    
+    # we have 2*2**(its) components in total (2 classes)
+    for g in range(len(gmms)//2):
+        gmmPerComponent = []
+        gmmPerComponent.append(gmms[g])
+        gmmPerComponent.append(gmms[ len(gmms)//2 + g])
+        
+        llrGMMComp = computeGMM_LLR(DTE, gmmPerComponent)
+        
+        llrs.append(llrGMMComp)
+
+    # join the llrs of each fold
+    return np.array(llrs)
