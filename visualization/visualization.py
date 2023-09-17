@@ -10,7 +10,7 @@ def plotHistogram(data1, data2, title):
     plt.hist(data1, bins=25, density=True, fc=(0, 0, 1, 0.5))
     plt.hist(data2, bins=25, density=True, fc=(1, 0, 0, 0.5))
     plt.legend(["class 0", "class 1"])
-    plt.savefig(f'figures/{title}.png')
+    plt.savefig(f'results/img/{title}.png')
     # plt.show()
     plt.clf()
     
@@ -22,7 +22,7 @@ def plotScatter(class0, class1, title):
     plt.legend(["class 0", "class 1"])
     plt.xlabel("attribute 0")
     plt.ylabel("attribute 1")
-    plt.savefig(f'figures/{title}.png')
+    plt.savefig(f'results/img/{title}.png')
     # plt.show()
     plt.clf()
     
@@ -32,7 +32,7 @@ def plotCorrMat(data, filename):
     corrMat = np.corrcoef(data)
     plt.matshow(corrMat)
     plt.colorbar()
-    plt.savefig(f'figures/{filename}.png')
+    plt.savefig(f'results/img/{filename}.png')
     # plt.show()
     plt.clf()
 
@@ -43,7 +43,7 @@ def plotCumVarRatios(ratios, dims):
     plt.ylabel('Cumulative Variance Ratio') 
     plt.title('Fraction of Explained Variance with PCAs') 
     plt.grid(True) 
-    plt.savefig(f'figures/CumulativeVarianceRatios.png')
+    plt.savefig(f'results/img/CumulativeVarianceRatios.png')
     # plt.show()
     plt.clf()
 
@@ -69,6 +69,7 @@ def plotROCCurve(scores : np.ndarray, labels: np.ndarray):
     plt.xlabel('FPR')
     plt.ylabel('TPR')
     plt.title('ROC curve')
+    plt.savefig('results/img/ROC.png')
     plt.show()
 
 

@@ -164,7 +164,7 @@ def compareSVMTrainTest(DTR, LTR, DTE, LTE, kernel, kernelName, firstZnorm, firs
         np.savetxt(f"results/txt/testing/{kernelName}svmDCFsTest_znorm{znorm}", minDCFsTest)
 
 
-def compareGMMTrainTest(DTR, LTR, DTE, LTE):
+def evaluateGMMsOnTest(DTR, LTR, DTE, LTE):
     
     gmmScoresTD11 = gmm.trainBestGMMClassifierOnFullTrainData(DTR, LTR, DTE, pcaDir=11, znorm=False, its=3, type='tiedDiag')
     gmmScoresTD10 = gmm.trainBestGMMClassifierOnFullTrainData(DTR, LTR, DTE, pcaDir=10, znorm=False, its=3, type='tiedDiag')
