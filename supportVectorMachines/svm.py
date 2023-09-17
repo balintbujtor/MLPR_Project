@@ -308,23 +308,23 @@ def trainSingleSVMClassifier(DTR: np.ndarray, LTR: np.ndarray, workingPoint: lis
     return minDCFarray
 
 
-def trainSingleKernelSVMOnFullTrainData(DTR, LTR, DTE, c, pcaDir: int = 8, prior: float = None):
+def trainSingleKernelSVMOnFullTrainData(DTR, LTR, DTE, c, pcaDir: int = 8, prior: float = None, znorm: bool = True, kernel = polyKernelWrapper(1, 2, 0)):
 
-    DTR, mean, stdDev = preproc.zNormalization(DTR)
-    DTE, _, _ = preproc.zNormalization(DTE, mean, stdDev)
+    if znorm:
+        DTR, mean, stdDev = preproc.zNormalization(DTR)
+        DTE, _, _ = preproc.zNormalization(DTE, mean, stdDev)
     
     reducedTrainData, covTrain, _ = preproc.computePCA(DTR, pcaDir)
     reducedTestData, _, _ = preproc.computePCA(DTE, pcaDir, covTrain)
     
-    polyKernel = polyKernelWrapper(1, 2, 0)
     # training non-linear SVM without class rebalancing
     poliSVMObj = KernelSVMClassifier(trainData=reducedTrainData, trainLabels=LTR)
     
     if prior == None:
-        alphaStar, dualLoss = poliSVMObj.train(c, kernelFunc=polyKernel)
+        alphaStar, dualLoss = poliSVMObj.train(c, kernelFunc=kernel)
     else:
-        alphaStar, dualLoss = poliSVMObj.train(c, kernelFunc=polyKernel, pT=prior)
+        alphaStar, dualLoss = poliSVMObj.train(c, kernelFunc=kernel, pT=prior)
     
-    poliLogScores, poliPreds = poliSVMObj.predict(reducedTestData, alphaStar, kernelFunc=polyKernel)
+    poliLogScores, poliPreds = poliSVMObj.predict(reducedTestData, alphaStar, kernelFunc=kernel)
 
     return poliLogScores

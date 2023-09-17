@@ -246,5 +246,11 @@ if __name__ == "__main__":
         gmmTestLabels = np.load('results/npy/testing/gmmScoresTest_uncalibratedLabels.npy')
         svmTestLabels = np.load('results/npy/testing/svmScoresTest_uncalibratedLabels.npy')
         logRegTestLabels = np.load('results/npy/testing/logRegScoresTest_uncalibratedLabels.npy')
-        vis.plotDET([gmmTestScores, logRegTestScores, svmTestScores], gmmTestLabels, ["GMM", "Q-LR", "poly-SVM"], ['r', 'b', 'g'], 'testing/best3DET')
+        # vis.plotDET([gmmTestScores, logRegTestScores, svmTestScores], gmmTestLabels, ["GMM", "Q-LR", "poly-SVM"], ['r', 'b', 'g'], 'testing/best3DET')
         #testing.calibrateScores()
+        
+        # testing.compareLogRegTrainTest(DTR, LTR, DTE, LTE)
+        # testing.compareSVMTrainTest(DTR, LTR, DTE, LTE, svm.polyKernelWrapper(1, 2, 0), 'poly', firstZnorm=True, firstPCA=8, secondC=10e-2)
+        testing.compareSVMTrainTest(DTR, LTR, DTE, LTE, svm.RBFKernelWrapper(0.001, 0), 'rbf', firstZnorm=False, firstPCA=8, secondC=10)
+        
+        testing.compareGMMTrainTest(DTR, LTR, DTE, LTE)

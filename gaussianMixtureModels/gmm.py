@@ -269,11 +269,12 @@ def trainBestGMMClassifierOnFullTrainData(DTR: np.ndarray, LTR: np.ndarray, DTE:
         
         # first split to have 2 components for the class
         mu, cov = helpers.ML_estimates(reducedTrainingData[:, LTR==classes])
+        gmms.append([[1, mu, cov]])
         gmms.append(LBG_Algorithm(reducedTrainingData[:, LTR == classes], [[1, mu, cov]], 1, type=type))
 
         # then split its - 1 times to have 2**(its) components for the class
         for j in range(1, its):
-            gmms.append(LBG_Algorithm(reducedTrainingData[:, LTR == classes], gmms[j-1], 1, type=type))
+            gmms.append(LBG_Algorithm(reducedTrainingData[:, LTR == classes], gmms[j], 1, type=type))
     
     # we have 2*2**(its) components in total (2 classes)
     for g in range(len(gmms)//2):
@@ -281,7 +282,7 @@ def trainBestGMMClassifierOnFullTrainData(DTR: np.ndarray, LTR: np.ndarray, DTE:
         gmmPerComponent.append(gmms[g])
         gmmPerComponent.append(gmms[ len(gmms)//2 + g])
         
-        llrGMMComp = computeGMM_LLR(DTE, gmmPerComponent)
+        llrGMMComp = computeGMM_LLR(reducedTestData, gmmPerComponent)
         
         llrs.append(llrGMMComp)
 
